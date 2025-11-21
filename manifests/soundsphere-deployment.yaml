@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: soundsphere-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: soundsphere-bot
+  template:
+    metadata:
+      labels:
+        app: soundsphere-bot
+    spec:
+      containers:
+      - name: soundsphere-bot
+        image: tientran0826/sparesphere-soundsphere-bot:latest
+        imagePullPolicy: Always
+        envFrom:
+          - secretRef:
+              name: soundsphere-secrets
