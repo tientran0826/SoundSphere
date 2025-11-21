@@ -1,0 +1,38 @@
+# manifests/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: soundsphere-bot-deployment
+  labels:
+    app: soundsphere-bot
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: soundsphere-bot
+  template:
+    metadata:
+      labels:
+        app: soundsphere-bot
+    spec:
+      containers:
+      - name: soundsphere-bot-container
+        image: your-docker-registry/soundsphere-bot:latest
+        imagePullPolicy: Always
+        env:
+          - name: DISCORD_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: soundsphere-secrets
+                key: DISCORD_API_KEY
+          - name: LAVALINK_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: soundsphere-secrets
+                key: LAVALINK_PASSWORD
+          - name: LAVALINK_URI
+            value: "http://lavalink-service:2333"
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
