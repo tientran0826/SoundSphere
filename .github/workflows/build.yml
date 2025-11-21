@@ -21,10 +21,12 @@ jobs:
       - name: Set Docker tag
         id: set-tag
         run: |
-          if [ "${GITHUB_REF_NAME}" == "production" ]; then
-            echo "TAG=soundsphere-bot:latest" >> $GITHUB_ENV
+          DOCKER_REPO="${{ secrets.DOCKERHUB_USERNAME }}"
+
+          if [ "${{ github.ref_name }}" == "production" ]; then
+            echo "TAG=${DOCKER_REPO}/soundsphere-bot:latest" >> $GITHUB_ENV
           else
-            echo "TAG=soundsphere-bot-dev:latest" >> $GITHUB_ENV
+            echo "TAG=${DOCKER_REPO}/soundsphere-bot-dev:latest" >> $GITHUB_ENV
           fi
 
       # Step 3: Build & Push Docker image
