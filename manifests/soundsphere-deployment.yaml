@@ -12,6 +12,8 @@ spec:
       labels:
         app: soundsphere-bot
     spec:
+      imagePullSecrets:
+        - name: docker-reg-cred
       containers:
       - name: soundsphere-bot
         image: tientran0826/sparesphere-soundsphere-bot:latest
