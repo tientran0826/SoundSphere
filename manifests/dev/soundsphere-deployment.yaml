@@ -17,7 +17,7 @@ spec:
         - name: docker-reg-cred
       containers:
       - name: soundsphere-bot
-        image: tientran0826/soundsphere-bot:dev-latest
+        image: tientran0826/soundsphere-bot-dev-latest
         imagePullPolicy: Always
         envFrom:
           - secretRef:
