@@ -8,11 +8,20 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "discord (>=2.3.2,<3.0.0)",
+    "wavelink (>=3.4.1,<4.0.0)",
+    "alembic (>=1.17.2,<2.0.0)",
+    "dotenv (>=0.9.9,<0.10.0)",
+    "psycopg2 (>=2.9.11,<3.0.0)",
+    "psycopg2-binary (>=2.9.11,<3.0.0)"
 ]
 
-[tool.poetry]
-package-mode = false
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pre-commit (>=4.4.0,<5.0.0)"
+]

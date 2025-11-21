@@ -1,25 +1,72 @@
+import os
+import time
+
 import discord
+import wavelink
 from discord.ext import commands
 from dotenv import load_dotenv
-import os
-import wavelink
-from database.models import QueueTracks
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker
 
+from database.models import Base
+
+# Load env variables
 load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 DEFAULT_CHANNEL = "music-player"
 
 # ----------------------
+# Database setup
+# ----------------------
+# 1. Check URL once before the loop
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set.")
+
+engine = None
+SessionLocal = None
+
+# 2. Use a single, robust retry loop
+for attempt in range(10):
+    try:
+        engine = create_engine(DATABASE_URL)
+
+        # Attempt to connect/check status by issuing a command
+        # This will raise OperationalError if connection fails
+        engine.connect()
+
+        # 🌟 CRITICAL: Create tables once the connection is verified
+        Base.metadata.create_all(engine)
+
+        SessionLocal = sessionmaker(bind=engine)
+        print("Database connected and tables created!")
+        break  # Exit the loop on success
+
+    except OperationalError:
+        print(f"Database not ready, retrying... ({attempt + 1}/10)")
+        time.sleep(3)
+    except Exception:
+        # Catch other errors like improper model definition, config errors, etc.
+        print(f"Failed to connect or create tables")
+        # We still sleep and retry unless it's a fatal config error
+        time.sleep(3)
+
+if engine is None:
+    raise RuntimeError("Could not connect to database after 10 attempts.")
+# ----------------------
 # Load cogs
 # ----------------------
 initial_cogs = ["cogs.music", "cogs.general"]
+
+
 async def load_cogs():
     for cog in initial_cogs:
         await bot.load_extension(cog)
+
 
 # ----------------------
 # On ready event
@@ -31,8 +78,7 @@ async def on_ready():
     # Connect Lavalink node
     if not wavelink.Pool.nodes:
         node = wavelink.Node(
-            uri=os.getenv("LAVALINK_URI"),
-            password=os.getenv("LAVALINK_PASSWORD")
+            uri=os.getenv("LAVALINK_URI"), password=os.getenv("LAVALINK_PASSWORD")
         )
         await wavelink.Pool.connect(client=bot, nodes=[node])
         print(f"Node initiated: {node}")
@@ -48,22 +94,25 @@ async def on_ready():
     else:
         general_channel = discord.utils.get(guild.text_channels, name="general")
         if general_channel:
-            await general_channel.send(f"Channel {DEFAULT_CHANNEL} already exists. Ready!")
-    await load_cogs()
+            await general_channel.send(
+                f"Channel {DEFAULT_CHANNEL} already exists. Ready!"
+            )
 
-@bot.event
+    await load_cogs()
 
 
 @bot.event
 async def on_wavelink_node_ready(payload: wavelink.NodeReadyEventPayload):
     print(f"Lavalink node {payload.node.identifier} is connected and ready!")
-    
+
+
 # ----------------------
 # Run bot
 # ----------------------
 def run_bot():
     token = os.getenv("DISCORD_API_KEY")
     bot.run(token)
+
 
 if __name__ == "__main__":
     run_bot()
