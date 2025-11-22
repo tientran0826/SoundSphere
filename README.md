@@ -74,7 +74,7 @@ This architecture allows for:
 2. Automated container builds and deployments  
 3. Reliable music streaming with scalable infrastructure
 
---
+---
 ## Setup
 
 ### Requirements
