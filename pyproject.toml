@@ -6,14 +6,17 @@ authors = [
     {name = "tientran0826",email = "tientran0826@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "discord (>=2.3.2,<3.0.0)",
     "wavelink (>=3.4.1,<4.0.0)",
     "alembic (>=1.17.2,<2.0.0)",
     "dotenv (>=0.9.9,<0.10.0)",
     "psycopg2 (>=2.9.11,<3.0.0)",
-    "psycopg2-binary (>=2.9.11,<3.0.0)"
+    "psycopg2-binary (>=2.9.11,<3.0.0)",
+    "pydantic (>=2.12.4,<3.0.0)",
+    "pydantic-settings (>=2.12.0,<3.0.0)",
+    "loguru (>=0.7.3,<0.8.0)"
 ]
 
 
