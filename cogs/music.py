@@ -412,9 +412,32 @@ class Music(commands.Cog):
     async def idle_checker(self):
         for guild in self.bot.guilds:
             vc: wavelink.Player = guild.voice_client
+
+            # Check if bot is connected
             if not vc:
                 self.delele_all_tracks_from_queue(guild.id)
                 continue
+
+            # Check if voice channel is empty
+            if vc.channel:
+                non_bot_members = [m for m in vc.channel.members if not m.bot]
+
+                if len(non_bot_members) == 0:
+                    logger.info(
+                        f"Disconnecting from {guild.name} because bot is alone."
+                    )
+                    channel_id = self.get_server_config(guild.id).default_channel_id
+                    channel = guild.get_channel(channel_id)
+                    await channel.send(
+                        "Leaving voice channel because everyone left :face_holding_back_tears: ."
+                    )
+                    await vc.disconnect()
+                    self.delele_all_tracks_from_queue(guild.id)
+                    if hasattr(vc, "idle_start"):
+                        delattr(vc, "idle_start")
+                    continue
+
+            # Check for idle timeout
             if not vc.playing or vc.paused:
                 if not hasattr(vc, "idle_start"):
                     vc.idle_start = datetime.now()
