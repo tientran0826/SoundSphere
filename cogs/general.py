@@ -9,59 +9,81 @@ class MusicHelp(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="music_help", aliases=["mh"])
-    async def music_help(self, ctx):
-        """Show music bot commands and usage"""
+    @commands.command(name="help_music", aliases=["music", "h"])
+    async def help_command(self, ctx):
+        """Shows help for all music and album commands."""
+
+        # Create an embed for the help message
         embed = discord.Embed(
-            title="🎵 Music Bot Help",
-            description="Here’s a list of available music commands and how to use them:",
-            color=0x1DB954,
+            title="🎶 Discord Music Bot Commands",
+            description="Use these commands to control the music and manage your saved albums.",
+            color=0x42F5AA,  # A light green color
         )
 
-        embed.add_field(
-            name="!play <query>",
-            value="Plays a song or adds it to the queue if something is already playing.\nExample: `!play Never Gonna Give You Up`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!pause",
-            value="Pauses the currently playing track.\nExample: `!pause`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!resume",
-            value="Resumes paused track.\nExample: `!resume`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!skip",
-            value="Skips the current track and plays the next one in queue.\nExample: `!skip`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!stop",
-            value="Stops playback and clears the queue.\nExample: `!stop`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!disconnect",
-            value="Disconnects the bot from the voice channel.\nExample: `!disconnect`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!queue",
-            value="Shows all tracks in the queue.\nExample: `!queue`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!now",
-            value="Shows the currently playing track.\nExample: `!now`",
-            inline=False,
-        )
-        embed.add_field(
-            name="!shuffle",
-            value="Shuffles the current queue.\nExample: `!shuffle`",
-            inline=False,
+        # Define the command groups and descriptions
+        command_groups = {
+            "Playback & Control": [
+                (
+                    "play [query/url]",
+                    "Play a track immediately, or add a search query/URL to the queue.",
+                ),
+                ("pause", "Pause the currently playing track."),
+                ("resume", "Resume the paused track."),
+                ("skip", "Skip the current track and play the next one in the queue."),
+                (
+                    "stop",
+                    "Stop the current track and clear the player's internal queue (but **not** the DB queue).",
+                ),
+                ("disconnect", "Disconnect the bot from the voice channel."),
+            ],
+            "Queue Management": [
+                ("queue", "View all tracks currently waiting in the queue."),
+                (
+                    "remove <position>",
+                    "Remove a specific track from the queue by its position number.",
+                ),
+                ("clear", "Clear the entire music queue."),
+            ],
+            "Album Management": [
+                ("create_album <name>", "Create a new album with the given name."),
+                ("remove_album <name>", "Delete an album and all its tracks."),
+                ("albums", "List all saved albums for this server."),
+                ("show_album <name>", "List all tracks stored in a specific album."),
+                (
+                    "play_album <name>",
+                    "Clear the queue and play all tracks from the specified album.",
+                ),
+                (
+                    "start_add <album_name>",
+                    "Enter **add-track mode** for an album (tracks added via `!add` will be saved).",
+                ),
+                (
+                    "add <track_title>",
+                    "In add-track mode, search for a track and save it to the current album.",
+                ),
+                ("end", "Manually exit add-track mode."),
+                (
+                    "remove_from_album <album_name> <track_number>",
+                    "Remove a track from a specific album by its track number.",
+                ),
+            ],
+        }
+
+        # Add fields to the embed based on the groups
+        for title, commands_list in command_groups.items():
+            field_value = "\n".join(
+                [f"**!{cmd}** - {desc}" for cmd, desc in commands_list]
+            )
+            embed.add_field(name=f"--- {title} ---", value=field_value, inline=False)
+
+        # Set the footer
+        embed.set_footer(
+            text=f"Requested by {ctx.author.display_name}",
+            icon_url=(
+                ctx.author.avatar.url
+                if ctx.author.avatar
+                else ctx.author.default_avatar.url
+            ),
         )
 
         await ctx.send(embed=embed)
