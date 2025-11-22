@@ -63,7 +63,6 @@ class Music(commands.Cog):
         database_url = os.getenv("DATABASE_URL")
         self.engine = create_engine(database_url)
         self.Session = sessionmaker(bind=self.engine)
-        self.default_channel = None
         self.idle_checker.start()
 
     # Only listen to music channel
@@ -85,7 +84,6 @@ class Music(commands.Cog):
                 )
                 return False
 
-        self.default_channel = channel
         return True
 
     def get_server_config(self, guild_id: int):
@@ -117,8 +115,11 @@ class Music(commands.Cog):
         if reason.upper() == "STOPPED" or reason.upper() == "REPLACED":
             return
         next_track = self.pop_next_track(player.guild.id)
+        channel_id = self.get_server_config(player.guild.id).default_channel_id
+        channel = player.guild.get_channel(channel_id)
         if not next_track:
-            await self.default_channel.send("📭 Queue is empty!")
+            if channel:
+                await channel.send("📭 Queue is empty!")
             return
 
         playable = (await wavelink.Playable.search(next_track.url))[0]
@@ -133,7 +134,7 @@ class Music(commands.Cog):
             next_track.url,
         )
 
-        await self.default_channel.send(
+        await channel.send(
             embed=track_embed(playable, next_track.requested_by, title="▶️ Now Playing")
         )
 
@@ -303,7 +304,9 @@ class Music(commands.Cog):
                     logger.info(
                         f"Disconnecting from {guild.name} after {configs.IDLE_TIMEOUT} seconds of idling."
                     )
-                    await self.default_channel.send("Disconnecting due to inactivity.")
+                    channel_id = self.get_server_config(guild.id).default_channel_id
+                    channel = guild.get_channel(channel_id)
+                    await channel.send("Disconnecting due to inactivity.")
                     await vc.disconnect()
                     self.delele_all_tracks_from_queue(guild.id)
                     if hasattr(vc, "idle_start"):
