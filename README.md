@@ -1,11 +1,14 @@
 # 🎵 SoundSphere Music Bot
 
-![SoundSphere Banner](images/banner.jpg)
+
 SoundSphere is a feature-rich Discord music bot built with **discord.py**, **Wavelink**, and **SQLAlchemy**.
 It allows users to play music in voice channels, manage queues, and keep track of playback history.
 
-⚡ **Note:** SoundSphere is based on **Lavalink** streaming, so you need a Lavalink server to use it.
+**Note:** SoundSphere is based on **Lavalink** streaming, so you need a Lavalink server to use it.
 You can either self-host a Lavalink server or use a free hosted server included in this code.
+
+![SoundSphere Banner](images/banner.jpg)
+
 ---
 
 ## Features
