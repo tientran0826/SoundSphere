@@ -25,27 +25,56 @@ You can either self-host a Lavalink server or use a free hosted server included 
 
 ## Commands
 
-### Music Commands
+### 🎵 Music Commands
+
+#### 🔊 Playback & Control
 
 | Command | Description | Example |
-|---------|-------------|---------|
-| `!play <query>` | Play a song or add it to the queue | `!play Never Gonna Give You Up` |
+|---|---|---|
+| `!play <query/url>` | Play a track immediately, or add a search query/URL to the queue | `!play Never Gonna Give You Up` |
 | `!pause` | Pause the currently playing track | `!pause` |
-| `!resume` | Resume a paused track | `!resume` |
+| `!resume` | Resume the paused track | `!resume` |
 | `!skip` | Skip the current track and play the next one | `!skip` |
-| `!stop` | Stop playback and clear the queue | `!stop` |
+| `!stop` | Stop the current track and clear the queue | `!stop` |
 | `!disconnect` | Disconnect the bot from the voice channel | `!disconnect` |
-| `!queue` | Show all tracks in the queue | `!queue` |
-| `!now` | Show the currently playing track | `!now` |
-| `!shuffle` | Shuffle the current queue | `!shuffle` |
-| `!music_help` or `!mh` | Show help info for music commands | `!music_help` |
+| `!now` | Show information about the currently playing track | `!now` |
+| `!music_help` / `!mh` | Show help info for all music commands | `!music_help` |
 
-### Server Commands
+---
+
+#### 📃 Queue Management
 
 | Command | Description | Example |
-|---------|-------------|---------|
-| `!set_prefix <prefix>` | Change prefix in server | `!set_prefix @` |
-| `!set_default_channel <text_channel>` | Set default channel to use command | `!set_default_channel #mention_text_channel` |
+|---|---|---|
+| `!queue` | View all tracks currently in the queue | `!queue` |
+| `!shuffle` | Shuffle the current queue | `!shuffle` |
+| `!remove <position>` | Remove a track from the queue by its index number | `!remove 2` |
+| `!clear` | Clear the entire queue | `!clear` |
+
+---
+
+#### 💿 Album Management
+
+| Command | Description | Example |
+|---|---|---|
+| `!create_album <name>` | Create a new album | `!create_album Chill` |
+| `!remove_album <name>` | Delete an album and all its tracks | `!remove_album Chill` |
+| `!albums` | List all albums for the server | `!albums` |
+| `!show_album <name>` | Display all tracks in the specified album | `!show_album Chill` |
+| `!play_album <name>` | Clear the queue and play all tracks from that album | `!play_album Chill` |
+| `!start_add <album_name>` | Enter add mode to store tracks into an album | `!start_add Chill` |
+| `!add <query>` | Add a found track to the currently active album | `!add Numb` |
+| `!end` | Exit album add mode manually | `!end` |
+| `!remove_from_album <album> <track_number>` | Remove a track from the album by index | `!remove_from_album Chill 3` |
+
+---
+
+### 🛠 Server Commands
+
+| Command | Description | Example |
+|---|---|---|
+| `!set_prefix <prefix>` | Change the bot's command prefix | `!set_prefix !` |
+| `!set_default_channel <#channel>` | Set the default channel for music commands | `!set_default_channel #music` |
 
 ---
 ## Architecture
