@@ -45,7 +45,7 @@ You can either self-host a Lavalink server or use a free hosted server included 
 | Command | Description | Example |
 |---------|-------------|---------|
 | `!set_prefix <prefix>` | Change prefix in server | `!set_prefix @` |
-| `!set_default_channel` | Set default channel to use command | `!set_default_channel #mention_text_channel` |
+| `!set_default_channel <text_channel>` | Set default channel to use command | `!set_default_channel #mention_text_channel` |
 
 ---
 
