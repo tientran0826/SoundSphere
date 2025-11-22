@@ -40,6 +40,13 @@ You can either self-host a Lavalink server or use a free hosted server included 
 | `!shuffle` | Shuffle the current queue | `!shuffle` |
 | `!music_help` or `!mh` | Show help info for music commands | `!music_help` |
 
+### Server Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `!set_prefix <prefix>` | Change prefix in server | `!set_prefix @` |
+| `!set_default_channel` | Set default channel to use command | `!set_default_channel #mention_text_channel` |
+
 ---
 
 ## Setup
