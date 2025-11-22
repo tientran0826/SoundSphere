@@ -202,7 +202,7 @@ class Music(commands.Cog):
         finally:
             session.close()
 
-    def create_ablumn(
+    def _create_ablumn(
         self,
         guild_id: int,
         album_name: str,
@@ -220,6 +220,24 @@ class Music(commands.Cog):
             session.commit()
         except Exception as e:
             logger.info(f"Error saving album track: {e}")
+            session.rollback()
+        finally:
+            session.close()
+
+    def _remove_album(self, guild_id: int, album_name: str):
+        """Remove album and its tracks from DB"""
+        session = self.Session()
+        try:
+            album = (
+                session.query(Album)
+                .filter_by(guild_id=guild_id, album_name=album_name)
+                .first()
+            )
+            if album:
+                session.delete(album)
+                session.commit()
+        except Exception as e:
+            logger.info(f"Error removing album: {e}")
             session.rollback()
         finally:
             session.close()
@@ -651,7 +669,7 @@ class Music(commands.Cog):
     @commands.command()
     async def create_album(self, ctx, *, album_name: str):
         """Create an album by adding tracks to the database."""
-        self.create_ablumn(
+        self._create_ablumn(
             guild_id=ctx.guild.id,
             album_name=album_name,
             requested_by=ctx.author.id,
@@ -661,7 +679,13 @@ class Music(commands.Cog):
         )
 
     @commands.command()
-    async def show_albums(self, ctx):
+    async def remove_album(self, ctx, *, album_name: str):
+        """Remove an album and its tracks from the database."""
+        self._remove_album(ctx.guild.id, album_name)
+        await ctx.send(f"🗑️ Album '{album_name}' and its tracks have been removed.")
+
+    @commands.command()
+    async def albums(self, ctx):
         """List all albums for the server."""
         albums = self.get_all_albums(ctx.guild.id)
         if not albums:
@@ -683,7 +707,7 @@ class Music(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def show_tracks(self, ctx, *, album_name: str):
+    async def show_album(self, ctx, *, album_name: str):
         """List all tracks in a specific album."""
         tracks = self.get_album_tracks(ctx.guild.id, album_name)
         if not tracks:
