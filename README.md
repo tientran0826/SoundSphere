@@ -89,7 +89,7 @@ This architecture allows for:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/SoundSphere.git
+git clone https://github.com/tientran0826/SoundSphere.git
 cd SoundSphere
 ```
 2. **Install dependencies via Poetry**
