@@ -48,16 +48,33 @@ You can either self-host a Lavalink server or use a free hosted server included 
 | `!set_default_channel <text_channel>` | Set default channel to use command | `!set_default_channel #mention_text_channel` |
 
 ---
+## Architecture
 
-## Setup
+SoundSphere is designed with maintainability and automation in mind. Key components of the architecture include:
 
-### Requirements
+- **Database Version Control with Alembic:**  
+  All database schema changes are managed using **Alembic**, allowing you to version, migrate, and rollback database changes safely and reliably.
 
-- Python 3.10+
-- Discord Bot Token
-- Lavalink server (for Wavelink music streaming)
-- PostgreSQL or compatible SQL database
+- **Deployment with Argo CD:**  
+  The bot is deployed using **Argo CD**, enabling GitOps-based continuous deployment.  
+  Any changes pushed to the GitHub repository can automatically sync to your Kubernetes cluster.
 
+- **CI/CD with GitHub Actions:**  
+  GitHub Actions are used to build Docker images of the bot whenever changes are pushed to the repository.  
+  This ensures that your deployment always uses the latest version of the code.
+
+- **Poetry for Dependency Management:**  
+  The bot uses **Poetry** to manage Python dependencies, keeping the environment consistent across development and production.
+
+- **Lavalink for Music Streaming:**  
+  Music playback is handled through **Lavalink**, which can be self-hosted or run on a free hosted instance.
+
+This architecture allows for:  
+1. Safe, version-controlled database management  
+2. Automated container builds and deployments  
+3. Reliable music streaming with scalable infrastructure
+
+--
 ## Setup
 
 ### Requirements
