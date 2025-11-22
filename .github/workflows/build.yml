@@ -10,29 +10,39 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # Step 1: Login to Docker
       - name: Login Docker
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Step 2: Set Docker tag based on branch
       - name: Set Docker tag
-        id: set-tag
         run: |
           DOCKER_REPO="${{ secrets.DOCKERHUB_USERNAME }}"
-
           if [ "${{ github.ref_name }}" == "production" ]; then
-            echo "TAG=${DOCKER_REPO}/soundsphere-bot:latest" >> $GITHUB_ENV
+            TAG="${DOCKER_REPO}/soundsphere-bot:latest"
           else
-            echo "TAG=${DOCKER_REPO}/soundsphere-bot-dev:latest" >> $GITHUB_ENV
+            TAG="${DOCKER_REPO}/soundsphere-bot-dev:latest"
           fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
 
-      # Step 3: Build & Push Docker image
       - name: Build & Push
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: ${{ env.TAG }}
+
+      - name: Trigger Argo CD sync
+        run: |
+          if [ "${{ github.ref_name }}" == "production" ]; then
+            APP_NAME="soundsphere"
+          else
+            APP_NAME="soundsphere-dev"
+          fi
+
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"prune":true,"force":true,"replace":true}' \
+            https://argocd.castl.io.vn/api/v1/applications/$APP_NAME/sync
