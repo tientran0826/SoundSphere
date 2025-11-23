@@ -7,7 +7,12 @@ spec:
   selector:
     app: soundsphere-bot
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 80
       targetPort: 8080
+    - name: api-control
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
   type: NodePort
