@@ -16,7 +16,9 @@ dependencies = [
     "psycopg2-binary (>=2.9.11,<3.0.0)",
     "pydantic (>=2.12.4,<3.0.0)",
     "pydantic-settings (>=2.12.0,<3.0.0)",
-    "loguru (>=0.7.3,<0.8.0)"
+    "loguru (>=0.7.3,<0.8.0)",
+    "fastapi (>=0.121.3,<0.122.0)",
+    "uvicorn (>=0.38.0,<0.39.0)"
 ]
 
 
