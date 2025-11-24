@@ -9,6 +9,7 @@ from api.models import (
     TrackCreate,
     UserVoiceCheckResponse,
     VoiceControlRequest,
+    VolumeAbsoluteRequest,
 )
 
 router = APIRouter(prefix="/api/bot", tags=["Bot Control"])
@@ -91,6 +92,7 @@ async def get_guild_status(guild_id: int):
                 "duration": vc.current.length // 1000,
                 "position": vc.position // 1000,
                 "uri": vc.current.uri,
+                "identifier": vc.current.identifier,
             }
 
         return BotStatusResponse(success=True, status=status)
@@ -242,6 +244,32 @@ async def control_playback(guild_id: int, control: VoiceControlRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{guild_id}/volume_absolute", response_model=SuccessResponse)
+async def set_volume_absolute(guild_id: int, volume_req: VolumeAbsoluteRequest):
+    """
+    Set bot volume directly (0-100).
+    """
+    bot = get_bot()
+    guild = bot.get_guild(guild_id)
+    if not guild:
+        raise HTTPException(status_code=404, detail="Guild not found")
+
+    is_valid, message, _, _ = verify_user_in_voice(
+        guild, volume_req.user_id, require_same_channel=True
+    )
+    if not is_valid:
+        raise HTTPException(status_code=403, detail=message)
+
+    vc = guild.voice_client
+    if not vc:
+        raise HTTPException(status_code=400, detail="Bot not connected to voice")
+
+    new_volume = max(0, min(100, volume_req.volume))
+    await vc.set_volume(new_volume)
+
+    return SuccessResponse(success=True, message=f"Volume set to {new_volume}%")
+
+
 @router.post("/{guild_id}/connect/{user_id}", response_model=SuccessResponse)
 async def connect_to_voice(guild_id: int, user_id: int):
     """Connect bot to user's voice channel"""
@@ -369,6 +397,7 @@ async def play_track_api(guild_id: int, track: TrackCreate):
             guild_id,
             playable.title,
             playable.uri,
+            playable.identifier,
             playable.author,
             track.requested_by,
         )
@@ -397,4 +426,61 @@ async def play_track_api(guild_id: int, track: TrackCreate):
         raise
     except Exception as e:
         logger.error(f"Error playing track: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/{guild_id}/users-in-channel",
+    response_model=dict,
+)
+async def get_users_in_same_channel(guild_id: int):
+    """
+    Return list of members in same voice channel as the bot, including avatar URLs
+    """
+    try:
+        bot = get_bot()
+        guild = bot.get_guild(guild_id)
+
+        if not guild:
+            raise HTTPException(status_code=404, detail="Guild not found")
+
+        vc = guild.voice_client
+        if not vc or not vc.channel:
+            return {
+                "success": False,
+                "channel": None,
+                "members": [],
+                "message": "Bot is not connected to any voice channel",
+            }
+
+        channel = vc.channel
+
+        members = []
+        for member in channel.members:
+            avatar_url = (
+                member.display_avatar.url
+                if hasattr(member.display_avatar, "url")
+                else None
+            )
+
+            members.append(
+                {
+                    "user_id": member.id,
+                    "name": member.display_name,
+                    "is_bot": member.bot,
+                    "status": str(member.status),
+                    "avatar": avatar_url,
+                }
+            )
+
+        return {
+            "success": True,
+            "channel": channel.name,
+            "members": members,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving members in bot channel: {e}")
         raise HTTPException(status_code=500, detail=str(e))

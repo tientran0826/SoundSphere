@@ -1,7 +1,8 @@
+import wavelink
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from api.dependencies import get_repo
+from api.dependencies import get_bot, get_repo
 from api.models import QueueResponse, SuccessResponse, TrackCreate, TrackResponse
 
 router = APIRouter(prefix="/api/queue", tags=["Queue"])
@@ -22,6 +23,7 @@ async def get_queue(guild_id: int):
                     author=t.track_author,
                     url=t.url,
                     requested_by=t.requested_by,
+                    identifier=t.identifier,
                 )
                 for t in tracks
             ],
@@ -35,11 +37,13 @@ async def get_queue(guild_id: int):
 async def add_to_queue(guild_id: int, track: TrackCreate):
     """Add track to queue"""
     try:
+
         repo = get_repo()
         success = repo.save_to_queue(
             guild_id,
             track.track_title,
             track.url,
+            track.identifier,
             track.track_author,
             track.requested_by,
         )
@@ -53,8 +57,9 @@ async def add_to_queue(guild_id: int, track: TrackCreate):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error adding to queue: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Đảm bảo log được ghi lại
+        logger.error(f"Error adding to queue for Guild {guild_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 @router.delete("/{guild_id}/{position}", response_model=SuccessResponse)
@@ -71,6 +76,63 @@ async def remove_from_queue(guild_id: int, position: int):
         raise
     except Exception as e:
         logger.error(f"Error removing from queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{guild_id}/jump", response_model=SuccessResponse)
+async def jump_to_track(guild_id: int, index: int):
+    """Jump to a track: play immediately, remove from queue, save to history"""
+    try:
+        bot = get_bot()
+        repo = get_repo()
+        guild = bot.get_guild(guild_id)
+
+        if not guild:
+            raise HTTPException(status_code=404, detail="Guild not found")
+
+        vc = guild.voice_client
+        if not vc:
+            raise HTTPException(
+                status_code=400, detail="Bot not connected to voice channel"
+            )
+
+        # Get the track
+        queue = repo.get_all_tracks_from_queue(guild_id)
+        print(index)
+        if index < 1 or index > len(queue):
+            raise HTTPException(status_code=400, detail="Invalid track index")
+        track_to_play = queue[index - 1]
+        print(track_to_play)
+        repo.remove_from_queue(guild_id, track_to_play.position)
+
+        # Search playable
+        tracks = await wavelink.Playable.search(track_to_play.url)
+        if not tracks:
+            raise HTTPException(status_code=404, detail="Track not found on YouTube")
+
+        playable = tracks[0]
+
+        # Play
+        await vc.play(playable)
+
+        # Save history
+        repo.save_play_history(
+            guild_id,
+            track_to_play.requested_by,
+            track_to_play.track_title,
+            track_to_play.identifier,
+            track_to_play.track_author,
+            track_to_play.url,
+        )
+
+        return SuccessResponse(
+            success=True, message=f"Now playing: {track_to_play.track_title}"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error jumping to track: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

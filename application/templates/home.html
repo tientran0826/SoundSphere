@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div id="voice-users-container" class="mb-6 p-4 rounded-xl shadow-2xl bg-card-bg">
+    <h3 class="text-xl font-bold text-white mb-3 border-l-4 pl-3 border-primary-green">
+        🎧 Currently in Voice Channel
+    </h3>
+    <div id="voice-users-list" class="flex gap-4 flex-wrap">
+        </div>
+</div>
+
+<div id="featured-albums-container" class="mt-6 p-4 rounded-xl shadow-2xl bg-card-bg">
+    <h3 class="text-xl font-bold text-white mb-6 border-l-4 pl-3 border-primary-green">
+        💿 Server Selections & Playlists
+    </h3>
+
+    <div id="album-list-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+
+        <button
+            type="button"
+            class="album-card w-full p-4 rounded-lg flex flex-col items-start transition transform hover:bg-dark-hover hover:-translate-y-1 hover:ring-2 hover:ring-primary-green cursor-pointer text-left group"
+            onclick="playAlbum('server_album_1')"
+        >
+            <div class="w-full aspect-square overflow-hidden rounded-lg mb-3 shadow-lg">
+                <img
+                    src="https://placehold.co/200x200/1db954/ffffff?text=Server+Mix+1"
+                    alt="Server Album Placeholder"
+                    class="object-cover w-full h-full transition duration-300 group-hover:scale-105"
+                >
+            </div>
+            <div class="flex-grow w-full">
+                <p class="text-base font-bold text-white truncate">The Guild Mix</p>
+                <p class="text-xs text-gray-400 truncate">Curated by {{ GUILD_NAME }}</p>
+            </div>
+        </button>
+
+        <button
+            type="button"
+            class="album-card w-full p-4 rounded-lg flex flex-col items-start transition transform hover:bg-dark-hover hover:-translate-y-1 hover:ring-2 hover:ring-primary-green cursor-pointer text-left group"
+            onclick="playAlbum('featured_playlist_id')"
+        >
+            <div class="w-full aspect-square overflow-hidden rounded-lg mb-3 shadow-lg">
+                <img
+                    src="https://placehold.co/200x200/7a7a7a/ffffff?text=Chill+Beats"
+                    alt="Chill Beats Playlist"
+                    class="object-cover w-full h-full transition duration-300 group-hover:scale-105"
+                >
+            </div>
+            <div class="flex-grow w-full">
+                <p class="text-base font-bold text-white truncate">Chill Background</p>
+                <p class="text-xs text-gray-400 truncate">Bot Recommended</p>
+            </div>
+        </button>
+
+        </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/music-player.js') }}"></script>
+<script src="{{ url_for('static', filename='js/album-list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bot.js') }}"></script>
+{% endblock %}

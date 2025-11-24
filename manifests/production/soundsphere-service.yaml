@@ -4,10 +4,14 @@ metadata:
   name: soundsphere-bot
   namespace: production
 spec:
-  selector:
-    app: soundsphere-bot
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 80
       targetPort: 8080
-  type: ClusterIP
+    - name: api-control
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 30269
+  type: NodePort

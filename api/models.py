@@ -8,13 +8,17 @@ from pydantic import BaseModel
 # ----------------------
 class TrackCreate(BaseModel):
     track_title: str
-    requested_by: int = 0
+    url: str  # Bắt buộc phải có URL của bài hát
+    identifier: Optional[str] = None
+    track_author: str  # Bắt buộc phải có tên tác giả
+    requested_by: int = 0  # ID người yêu cầu (Discord User ID)
 
 
 class TrackResponse(BaseModel):
     position: int
     title: str
     author: str
+    identifier: Optional[str] = None
     url: str
     requested_by: int
 
@@ -29,6 +33,7 @@ class QueueResponse(BaseModel):
 # ----------------------
 class AlbumCreate(BaseModel):
     album_name: str
+    album_img_url: Optional[str] = None
     requested_by: int = 0
 
 
@@ -42,6 +47,7 @@ class AlbumResponse(BaseModel):
 class AlbumTrackResponse(BaseModel):
     track_number: int
     title: str
+    identifier: Optional[str] = None
     author: str
     url: str
     requested_by: int
@@ -50,6 +56,9 @@ class AlbumTrackResponse(BaseModel):
 class AlbumTracksResponse(BaseModel):
     success: bool
     album_name: str
+    album_img_url: Optional[str] = None
+    created_at: Optional[str] = None
+    created_by: Optional[int] = None
     tracks: List[AlbumTrackResponse]
 
 
@@ -60,6 +69,7 @@ class HistoryResponse(BaseModel):
     title: str
     author: str
     url: str
+    identifier: Optional[str] = None
     played_by: int
     played_at: str
 
@@ -85,6 +95,11 @@ class VoiceControlRequest(BaseModel):
     user_id: int  # Discord user ID making the request
 
 
+class VolumeAbsoluteRequest(BaseModel):
+    user_id: int
+    volume: int  # 0-100
+
+
 class UserVoiceCheckResponse(BaseModel):
     success: bool
     in_voice: bool
@@ -96,6 +111,11 @@ class UserVoiceCheckResponse(BaseModel):
 class BotStatusResponse(BaseModel):
     success: bool
     status: Dict[str, Any]
+
+
+class VolumeAbsoluteRequest(BaseModel):
+    user_id: int
+    volume: int  # 0-100
 
 
 # ---------------------
