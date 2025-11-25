@@ -29,6 +29,8 @@ async def get_albums(guild_id: int):
                 name=a.album_name,
                 created_by=a.created_by,
                 track_count=len(a.tracks),
+                album_img_url=a.album_img_url,
+                created_at=a.created_at.isoformat(),
             )
             for a in albums
         ]
@@ -54,6 +56,8 @@ async def get_album_tracks(guild_id: int, album_name: str):
         return AlbumTracksResponse(
             success=True,
             album_name=album_name,
+            album_img_url=album_obj.album_img_url,
+            created_at=album_obj.created_at.isoformat(),
             tracks=[
                 AlbumTrackResponse(
                     track_number=t.track_number,
@@ -78,7 +82,9 @@ async def create_album(guild_id: int, album: AlbumCreate):
     """Create new album"""
     try:
         repo = get_repo()
-        success = repo.create_album(guild_id, album.album_name, album.requested_by)
+        success = repo.create_album(
+            guild_id, album.album_name, album.requested_by, album.album_img_url
+        )
 
         if success:
             return SuccessResponse(

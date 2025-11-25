@@ -2,54 +2,90 @@
 
 {% block content %}
 <div class="min-h-screen bg-[#0a0a0a] p-4 text-gray-100 md:p-12">
-<!--
-    <a href="/" class="mb-6 inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-white">
-        ← Back to Dashboard
-    </a> -->
 
     <div class="flex flex-col gap-8 lg:flex-row lg:gap-6">
 
-        <div class="flex flex-col items-center gap-4 text-center lg:w-1/4 lg:items-start lg:text-left">
+        <div class="flex flex-col items-center gap-6 lg:w-1/4 lg:items-start lg:text-left">
 
-            <div class="relative shadow-2xl transition-transform duration-500 hover:scale-105">
-                <img src="{{ album.album_img_url or 'https://placehold.co/400x400/10b981/ffffff?text=Album' }}"
-                     alt="{{ album.album_name }}"
-                     class="aspect-square w-40 rounded-xl object-cover shadow-lg lg:w-full">
-                <div class="absolute -inset-2 -z-10 bg-green-500/20 blur-xl"></div>
+            <div class="flex flex-col items-center gap-6 w-full md:flex-row md:items-end lg:flex-col lg:items-start">
+
+                <div class="relative shrink-0 shadow-2xl transition-transform duration-500 hover:scale-105 group">
+                    <img src="{{ album.album_img_url or 'https://placehold.co/400x400/10b981/ffffff?text=Album' }}"
+                        alt="{{ album.album_name }}"
+                        class="aspect-square w-60 rounded-xl object-cover shadow-lg ring-1 ring-white/10">
+                    <div class="absolute -inset-4 -z-10 rounded-full bg-green-500/20 blur-2xl opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+
+                <div class="w-full text-center md:text-left lg:text-left">
+                    <h5 class="text-xs font-bold uppercase text-green-400/80 tracking-widest mb-2">Album</h5>
+                    <h1 class="truncate text-2xl font-bold text-white md:text-4xl lg:text-3xl xl:text-4xl leading-tight">{{ album.album_name }}</h1>
+
+                    <div class="mt-4 flex flex-col md:flex-row lg:flex-col xl:flex-row items-center md:items-start lg:items-start gap-2 text-sm text-neutral-400">
+                        <span class="font-medium text-neutral-200">
+                            <script>
+                            const createdAt = new Date("{{ album.created_at }}");
+                            document.write(createdAt.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                            }));
+                        </script>
+                        </span>
+                        <span class="hidden md:inline lg:hidden xl:inline">•</span>
+                        <span>{{ album.tracks | length }} Songs</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="w-full">
-                <h1 class="truncate text-2xl font-bold text-white md:text-3xl">{{ album.album_name }}</h1>
-                <p class="text-sm text-gray-400">{{ album.created_by or 'Unknown Artist' }} • {{ album.tracks | length }} Songs</p>
-            </div>
-
-            <div class="flex w-full gap-3 lg:flex-col">
+            <div class="flex w-full flex-col gap-3 mt-2">
                 {% if album.tracks and album.tracks|length > 0 %}
-                    <button class="play-album-btn flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-500 py-3 text-sm font-bold text-black hover:bg-green-400 lg:w-full">
-                        ▶ Play Album
+                    <button class="play-album-btn group relative flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition-all duration-300 hover:border-green-500/50 hover:bg-green-500/10 hover:text-green-400 hover:shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+                        <span class="transition-transform group-hover:scale-110">▶</span>
+                        Play Album
                     </button>
-                    <button class="add-album-btn flex flex-1 items-center justify-center gap-2 rounded-lg bg-white/10 py-3 text-sm font-bold text-white hover:bg-white/20 lg:w-full">
-                        ➕ Add Queue
+
+                    <button class="add-album-btn group flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-3.5 text-sm font-semibold text-neutral-300 backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/10 hover:text-white">
+                        <span class="transition-transform group-hover:scale-110">➕</span>
+                        Add to Queue
                     </button>
                 {% else %}
-                    <button class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-gray-800 py-3 text-sm font-bold text-gray-600 lg:w-full" disabled>
+                    <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] py-3.5 text-sm font-semibold text-neutral-600">
                         ▶ Play Album
                     </button>
-                    <button class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-gray-800 py-3 text-sm font-bold text-gray-600 lg:w-full" disabled>
-                        ➕ Add Queue
+                    <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] py-3.5 text-sm font-semibold text-neutral-600">
+                        ➕ Add to Queue
                     </button>
                 {% endif %}
+
+                <button id="delete-album-btn"
+                        class="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-transparent py-3 text-xs font-medium text-neutral-500 transition-all duration-300 hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-50 transition-opacity group-hover:opacity-100" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Delete Album
+                </button>
             </div>
+
+            <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm transition-all">
+                <div class="w-80 transform rounded-2xl border border-white/10 bg-[#0F0F0F] p-6 shadow-2xl transition-all">
+                    <h3 id="confirm-message" class="mb-6 text-center text-lg font-medium text-white">Confirm</h3>
+                    <div class="flex gap-3">
+                        <button id="confirm-cancel" class="flex-1 rounded-lg border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-white hover:bg-white/10 transition">Cancel</button>
+                        <button id="confirm-ok" class="flex-1 rounded-lg bg-red-500/10 border border-red-500/20 py-2.5 text-sm font-bold text-red-500 hover:bg-red-500 hover:text-white transition-colors">Delete</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <div class="flex min-h-[200px] flex-col gap-2 lg:w-3/4">
             {% if album.tracks and album.tracks|length > 0 %}
                 {% for track in album.tracks %}
-                <div class="group relative mb-2 flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-2 transition-all active:scale-[0.98] lg:bg-transparent lg:hover:bg-white/5 lg:hover:border-white/10">
+                <div class="group relative mb-1 flex items-center justify-between rounded-xl border border-transparent bg-white/[0.02] p-2 transition-all hover:bg-white/[0.06] hover:border-white/[0.05]">
 
                     <button
                         type="button"
-                        class="add-track-btn flex flex-1 items-center gap-3 overflow-hidden min-w-0 text-left"
+                        class="add-track-btn flex flex-1 items-center gap-4 overflow-hidden min-w-0 text-left"
                         data-track-title="{{ track.title }}"
                         data-track-author="{{ track.author }}"
                         data-guild-id="{{ guild_id }}"
@@ -57,42 +93,42 @@
                         data-track-uri="{{ track.url }}"
                         data-identifier="{{ track.identifier }}"
                     >
-                        <div class="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg shadow-md md:h-14 md:w-14">
+                        <span class="hidden w-6 text-center text-xs font-medium text-neutral-600 group-hover:text-neutral-400 md:block">
+                            {{ loop.index }}
+                        </span>
+
+                        <div class="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-800 shadow-sm md:h-12 md:w-12">
                             <img
                                 src="https://img.youtube.com/vi/{{ track.identifier }}/mqdefault.jpg"
                                 alt="Thumbnail"
-                                class="h-full w-full object-cover"
+                                class="h-full w-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
                             >
-                            <div class="absolute inset-0 hidden items-center justify-center bg-black/40 transition-opacity group-hover:flex">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <div class="absolute inset-0 hidden items-center justify-center bg-black/40 backdrop-blur-[1px] group-hover:flex">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                             </div>
                         </div>
 
                         <div class="flex flex-col justify-center min-w-0 flex-1">
-                            <h3 class="truncate text-sm font-semibold text-gray-100 group-hover:text-green-400">
+                            <h3 class="truncate text-sm font-medium text-neutral-200 group-hover:text-green-400 transition-colors">
                                 {{ track.title }}
                             </h3>
-                            <p class="truncate text-xs font-medium text-gray-400">
+                            <p class="truncate text-xs text-neutral-500 group-hover:text-neutral-400">
                                 {{ track.author }}
                             </p>
                         </div>
                     </button>
 
-                    <div class="flex flex-shrink-0 items-center gap-3 pl-3">
-
-                        <span class="hidden text-[10px] font-bold uppercase tracking-wider text-green-400 opacity-0 transition-opacity group-hover:opacity-100 lg:block">
-                            Play
-                        </span>
-
+                    <div class="flex flex-shrink-0 items-center gap-3 pr-2">
                         <button
                             type="button"
-                            class="remove-track-btn flex items-center justify-center rounded-full p-2 text-gray-500 opacity-100 transition-colors hover:bg-red-500/20 hover:text-red-400 lg:opacity-0 lg:group-hover:opacity-100"
+                            class="remove-track-btn flex items-center justify-center rounded-lg p-2 text-neutral-600 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
                             data-identifier="{{ track.identifier }}"
                             data-guild-id="{{ guild_id }}"
                             data-album-name="{{ album.album_name }}"
                             data-track-number="{{ track.track_number }}"
+                            title="Remove track"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 7V4a2 2 0 012-2h0a2 2 0 012 2v3" />
                             </svg>
                         </button>
@@ -100,18 +136,19 @@
                 </div>
             {% endfor %}
             {% else %}
-                <div class="flex flex-col items-center justify-center py-20 text-gray-500">
-                    <p>No tracks yet 🥺</p>
-                    <p class="text-sm">Search for songs to add them here</p>
+                <div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-20 text-neutral-500">
+                    <p class="text-lg font-medium">No tracks yet</p>
+                    <p class="text-sm opacity-60">Search for songs to add them here</p>
                 </div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<div id="toast-modal" class="fixed right-5 top-20 z-[60] hidden items-center gap-3 rounded-xl bg-gray-800 px-5 py-4 shadow-2xl ring-1 ring-white/10 backdrop-blur-md">
-    <span id="toast-message" class="text-sm font-medium text-white"></span>
-    <button id="toast-close" class="font-bold text-gray-400 hover:text-white">✕</button>
+<div id="toast-modal" class="fixed right-5 top-20 z-[100] hidden items-center gap-3 rounded-lg border border-white/10 bg-[#1a1a1a] pl-4 pr-3 py-3 shadow-2xl transition-all">
+    <div class="h-2 w-2 rounded-full bg-green-500"></div>
+    <span id="toast-message" class="text-sm font-medium text-neutral-200"></span>
+    <button id="toast-close" class="ml-2 rounded p-1 text-neutral-500 hover:bg-white/10 hover:text-white">✕</button>
 </div>
 
 {% endblock %}
@@ -131,6 +168,9 @@
         toastMsg.textContent = message;
         toast.classList.remove("hidden");
         toast.classList.add("flex");
+        // Simple animation
+        toast.classList.add("animate-bounce-in");
+
         setTimeout(() => {
             toast.classList.add("hidden");
             toast.classList.remove("flex");
@@ -148,6 +188,10 @@
     document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".play-album-btn").forEach(btn => {
             btn.addEventListener("click", async () => {
+                // Visual feedback on click
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `<span class="animate-spin">⌛</span> Loading...`;
+
                 try {
                     console.log("Play album:", albumName);
                     const url = `${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}/play?user_id=${USER_ID}`;
@@ -159,33 +203,69 @@
                 } catch (err) {
                     console.error(err);
                     showToast("Error playing album");
+                } finally {
+                    btn.innerHTML = originalText;
                 }
             });
-    });
-
-
-    document.querySelectorAll(".add-album-btn").forEach(btn => {
-        btn.addEventListener("click", async () => {
-                try {
-                    console.log("Add album to queue:", albumName);
-                    const resp = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}/add`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" }
-                    });
-                    if (!resp.ok) throw new Error("Failed to add album");
-                    const data = await resp.json();
-                    console.log(data);
-                    showToast(data.message);
-                } catch (err) {
-                    console.error(err);
-                    showToast("Error adding album to queue");
-
-                }
-
-            });
-
         });
+
+        document.querySelectorAll(".add-album-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = `<span class="animate-spin">⌛</span>`;
+
+                    try {
+                        console.log("Add album to queue:", albumName);
+                        const resp = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}/add`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" }
+                        });
+                        if (!resp.ok) throw new Error("Failed to add album");
+                        const data = await resp.json();
+                        console.log(data);
+                        showToast(data.message);
+                    } catch (err) {
+                        console.error(err);
+                        showToast("Error adding album to queue");
+                    } finally {
+                        btn.innerHTML = originalText;
+                    }
+                });
+            });
     });
+
+    function showConfirm(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById("confirm-modal");
+            const msgEl = document.getElementById("confirm-message");
+            const cancelBtn = document.getElementById("confirm-cancel");
+            const okBtn = document.getElementById("confirm-ok");
+
+            msgEl.textContent = message;
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+
+            const cleanUp = () => {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+                cancelBtn.removeEventListener("click", onCancel);
+                okBtn.removeEventListener("click", onOk);
+            };
+
+            const onCancel = () => {
+                cleanUp();
+                resolve(false);
+            };
+
+            const onOk = () => {
+                cleanUp();
+                resolve(true);
+            };
+
+            cancelBtn.addEventListener("click", onCancel);
+            okBtn.addEventListener("click", onOk);
+        });
+    }
 
     // Updated Remove Listener to match new classes
     document.querySelectorAll('.remove-track-btn').forEach(btn => {
@@ -194,11 +274,14 @@
             // Add visual feedback immediately for better UX
             const row = btn.closest('.group');
             row.style.opacity = '0.5';
+            row.style.pointerEvents = 'none';
 
             const guildId = btn.dataset.guildId;
             const albumName = encodeURIComponent(btn.dataset.albumName);
-            const trackNumber = btn.dataset.trackNumber; // Ensure this is passed in Jinja loop
+            const trackNumber = btn.dataset.trackNumber;
+
             console.log(`Removing track ${trackNumber} from album ${albumName} in guild ${guildId}`);
+
             try {
                 const resp = await fetch(`${FASTAPI_URL}/api/albums/${guildId}/${albumName}/tracks/${trackNumber}`, {
                     method: 'DELETE'
@@ -208,13 +291,42 @@
                 if (!resp.ok) throw new Error('Failed to remove track');
                 const data = await resp.json();
                 showToast(data.message);
-                row.remove(); // Remove from DOM
+
+                // Smooth remove
+                row.style.transition = 'all 0.3s ease';
+                row.style.height = '0';
+                row.style.padding = '0';
+                row.style.opacity = '0';
+                setTimeout(() => row.remove(), 300);
+
             } catch (err) {
                 console.error(err);
-                row.style.opacity = '1'; // Revert if failed
+                row.style.opacity = '1';
+                row.style.pointerEvents = 'auto';
                 showToast('Error removing track');
             }
         });
+    });
+
+    document.getElementById("delete-album-btn").addEventListener("click", async () => {
+        const confirmed = await showConfirm(`Are you sure you want to delete "${albumName}"?`);
+        if (!confirmed) return;
+        try {
+            const url = `${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}`;
+            const resp = await fetch(url, { method: "DELETE" });
+
+            if (!resp.ok) throw new Error("Failed to delete album");
+
+            const data = await resp.json();
+
+            showToast(data.message || "Album deleted successfully");
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 1000);
+        } catch (err) {
+            console.error(err);
+            showToast("Error deleting album", 4000);
+        }
     });
 </script>
 {% endblock %}

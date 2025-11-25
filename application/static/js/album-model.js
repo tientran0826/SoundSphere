@@ -122,3 +122,52 @@ function closeAlbumModal() {
     if (modal) modal.classList.add('hidden');
     pendingTrack = { title: null, url: null, author: null, identifier: null };
 }
+
+const createAlbumForm = document.getElementById("create-album-form");
+const createAlbumBtn = document.getElementById("create-album-btn");
+const createAlbumModal = document.getElementById("create-album-modal");
+const cancelAlbumBtn = document.getElementById("cancel-album-btn");
+
+createAlbumBtn.addEventListener("click", () => {
+    createAlbumModal.classList.remove("hidden");
+});
+
+createAlbumModal.addEventListener("click", (e) => {
+    if (e.target === createAlbumModal) {
+        createAlbumModal.classList.add("hidden");
+    }
+});
+createAlbumForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const albumName = document.getElementById("album-name").value;
+    const albumImgUrl = document.getElementById("album-img-url").value;
+
+    try {
+        const response = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                album_name: albumName,
+                album_img_url: albumImgUrl,
+                requested_by: USER_ID
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to create album');
+        }
+
+        alert("Album created successfully!");
+
+        // Close modal & reset form
+        createAlbumForm.reset();
+        createAlbumModal.classList.add("hidden");
+        await loadAlbums();
+
+    } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+    }
+});

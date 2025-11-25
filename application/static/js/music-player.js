@@ -379,7 +379,7 @@ function fetchBotStatus() {
                 albumArtBar.src = '/static/images/avatar.jpg'; // reset default
                 const subText = isConnected
                     ? '<p class="text-xs text-gray-400 truncate">Queue a song</p>'
-                    : `<p onclick="sendControlCommand('connect_bot')" class="cursor-pointer text-green-400 hover:text-green-300"></p>`;
+                    : `<p onclick="sendControlCommand('connect_bot')" class="cursor-pointer text-green-400 hover:text-green-300">Connect Bot</p>`;
 
                 trackInfo.innerHTML = `
                     <p class="text-sm font-semibold text-gray-400">No track playing</p>

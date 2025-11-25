@@ -38,17 +38,20 @@ async function loadAlbums(guildId) {
 
             // Attach click event to open modal
             albumCard.addEventListener("click", () => openAlbumDetails(album.name));
-
+            console.log(album);
             albumCard.innerHTML = `
+
                 <div class="w-full aspect-square overflow-hidden rounded-2xl mb-4 shadow-lg shadow-black/50 relative">
-                    <img src="${album.album_img_url || "https://placehold.co/400x400/10b981/ffffff?text=Guild+Mix"}"
+                    <img src="${album.album_img_url || "https://placehold.co/400x400/10b981/ffffff?text=Guild+Album"}"
                          alt="${album.name}"
                          class="object-cover w-full h-full transition duration-500 group-hover:scale-105 group-hover:rotate-2">
                 </div>
                 <div class="w-full">
                     <p class="text-base font-bold text-gray-100 truncate group-hover:text-green-400 transition-colors">${album.name}</p>
-                    <p class="text-xs text-gray-400 truncate mt-1">Curated by <span class="text-gray-300 font-medium">${album.created_by || "Unknown"}</span></p>
                     <p class="text-xs text-gray-500 truncate mt-1">${album.track_count || 0} tracks</p>
+                    <p class="text-xs text-gray-500 truncate mt-1">
+                        ${album.created_at ? new Date(album.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                    </p>
                 </div>
             `;
 
@@ -61,6 +64,95 @@ async function loadAlbums(guildId) {
     }
 }
 
+function closeAlbumModal() {
+    const modal = document.getElementById('album-select-modal');
+    if (modal) modal.classList.add('hidden');
+    pendingTrack = { title: null, url: null, author: null, identifier: null };
+}
+
+const createAlbumForm = document.getElementById("create-album-form");
+const createAlbumBtn = document.getElementById("create-album-btn");
+const createAlbumModal = document.getElementById("create-album-modal");
+const cancelAlbumBtn = document.getElementById("cancel-album-btn");
+
+createAlbumBtn.addEventListener("click", () => {
+    createAlbumModal.classList.remove("hidden");
+});
+
+createAlbumModal.addEventListener("click", (e) => {
+    if (e.target === createAlbumModal) {
+        createAlbumModal.classList.add("hidden");
+    }
+});
+function showSuccessNotification(message, type = "success") {
+    const container = document.getElementById("notification-container");
+    if (!container) return;
+
+    // Themed colors
+    let bgClass = "bg-white/5 border border-white/10"; // default
+    let textClass = "text-green-400"; // success color
+    if (type === "error") {
+        bgClass = "bg-white/5 border border-red-500/30";
+        textClass = "text-red-400";
+    }
+
+    const notif = document.createElement("div");
+    notif.className = `
+        ${bgClass} ${textClass} px-4 py-3 rounded-2xl backdrop-blur-md
+        shadow-lg shadow-black/50 flex items-center gap-2 font-bold
+        animate-slide-in opacity-0 transition-opacity duration-300
+    `;
+    notif.textContent = message;
+    container.appendChild(notif);
+
+    // Fade in
+    requestAnimationFrame(() => {
+        notif.classList.add("opacity-100");
+    });
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        notif.classList.remove("opacity-100");
+        notif.classList.add("opacity-0");
+        setTimeout(() => container.removeChild(notif), 300);
+    }, 3000);
+}
+
+
+createAlbumForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const albumName = document.getElementById("album-name").value;
+    const albumImgUrl = document.getElementById("album-img-url").value;
+
+    try {
+        const response = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                album_name: albumName,
+                album_img_url: albumImgUrl,
+                requested_by: USER_ID
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to create album');
+        }
+
+        showSuccessNotification("Album created successfully!");
+
+        // Close modal & reset form
+        createAlbumForm.reset();
+        createAlbumModal.classList.add("hidden");
+        await loadAlbums(GUILD_ID);
+
+    } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+    }
+});
 
 // ================================
 // 3️⃣ Album Search Handler

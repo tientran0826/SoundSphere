@@ -42,6 +42,8 @@ class AlbumResponse(BaseModel):
     name: str
     created_by: int
     track_count: int
+    album_img_url: Optional[str] = None
+    created_at: str
 
 
 class AlbumTrackResponse(BaseModel):
