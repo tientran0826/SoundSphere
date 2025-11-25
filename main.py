@@ -237,9 +237,28 @@ async def run_bot():
         await bot.start(token)
 
 
+def run_flask():
+    """Run your Flask app (blocking call)"""
+    from application.main import app as flask_app
+
+    flask_app.run(host="0.0.0.0", port=8000)  # choose port
+
+
 async def main():
-    """Run both FastAPI and Discord bot concurrently"""
-    await asyncio.gather(run_api(), run_bot())
+    from concurrent.futures import ThreadPoolExecutor
+
+    asyncio.get_running_loop()
+    ThreadPoolExecutor()
+
+    # Run Flask in a separate thread
+    # flask_future = loop.run_in_executor(executor, run_flask)
+
+    # Run FastAPI and Discord bot concurrently
+    await asyncio.gather(
+        run_api(),
+        run_bot(),
+        # flask_future
+    )
 
 
 if __name__ == "__main__":

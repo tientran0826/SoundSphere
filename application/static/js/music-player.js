@@ -1,7 +1,8 @@
-let isQueueOpen = false;
 let isPlaying = false;
 let currentTrackDuration = 0;
 let resolveMessageBox = null;
+let isQueueOpen = false;
+let queueInterval = null;
 
 // --- Message Box (Custom Alert/Confirm) Implementation ---
 function showMessage(title, message, isConfirm = false, onConfirm = null) {
@@ -59,41 +60,35 @@ function formatDuration(seconds) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// --- Player Control Functions ---
-let queueInterval = null;
-
 function toggleQueue() {
     isQueueOpen = !isQueueOpen;
     const sidebar = document.getElementById('queue-sidebar');
     const overlay = document.getElementById('queue-overlay');
-
-    if (!sidebar || !overlay) {
-        console.warn('Queue sidebar or overlay element not found!');
-        return;
-    }
+    if (!sidebar || !overlay) return;
 
     if (isQueueOpen) {
+        // This is the critical line to show the sidebar using your custom CSS
         sidebar.classList.add('open');
+
+        overlay.classList.remove('hidden');
         overlay.classList.add('active');
-
-        // Fetch immediately
         fetchQueueData();
-
-        // Start auto-refresh every 1s
-        queueInterval = setInterval(() => {
-            fetchQueueData();
-        }, 1000);
+        queueInterval = setInterval(fetchQueueData, 1000);
     } else {
+        // This is the critical line to hide the sidebar
         sidebar.classList.remove('open');
-        overlay.classList.remove('active');
 
-        // Stop auto-refresh
+        overlay.classList.add('hidden');
+        overlay.classList.remove('active');
         if (queueInterval) {
             clearInterval(queueInterval);
             queueInterval = null;
         }
     }
 }
+document.getElementById('queue-overlay')?.addEventListener('click', () => {
+    if (isQueueOpen) toggleQueue();
+});
 
 async function togglePlayPause() {
     const response = await fetch(`${FASTAPI_URL}/api/bot/${GUILD_ID}/status`);
@@ -498,21 +493,21 @@ function fetchUserVoiceStatus() {
 
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Open the queue automatically
-    isQueueOpen = true;
-    const sidebar = document.getElementById('queue-sidebar');
-    const overlay = document.getElementById('queue-overlay');
+// document.addEventListener('DOMContentLoaded', () => {
+//     // Open the queue automatically
+//     isQueueOpen = true;
+//     const sidebar = document.getElementById('queue-sidebar');
+//     const overlay = document.getElementById('queue-overlay');
 
-    if (sidebar && overlay) {
-        sidebar.classList.add('open');
-        overlay.classList.add('active');
-        fetchQueueData(); // fetch immediately
+//     if (sidebar && overlay) {
+//         sidebar.classList.add('open');
+//         overlay.classList.add('active');
+//         fetchQueueData(); // fetch immediately
 
-        // Auto-refresh queue every 1 second
-        setInterval(fetchQueueData, 1000);
-    }
-});
+//         // Auto-refresh queue every 1 second
+//         setInterval(fetchQueueData, 1000);
+//     }
+// });
 // Initialize player on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Display guild name
