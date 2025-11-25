@@ -122,6 +122,7 @@ async def add_track_to_album(guild_id: int, album_name: str, track: TrackCreate)
             album.id,
             track.track_title,
             track.url,
+            track.identifier,
             track.track_author,
             track.requested_by,
         )

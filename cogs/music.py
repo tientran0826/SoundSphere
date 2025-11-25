@@ -401,10 +401,12 @@ class Music(commands.Cog):
     @commands.command()
     async def create_album(self, ctx, *, album_name: str):
         """Create an album by adding tracks to the database."""
+        print(album_name)
         self.repo.create_album(
             guild_id=ctx.guild.id,
             album_name=album_name,
             requested_by=ctx.author.id,
+            album_img_url=None,
         )
         await ctx.send(
             f"📀 Album '{album_name}' created successfully! Please add tracks."
@@ -563,6 +565,7 @@ class Music(commands.Cog):
             url=choose_track.uri,
             track_author=choose_track.author,
             requested_by=ctx.author.id,
+            identifier=choose_track.identifier,
             track_number=next_track_number,
         )
 

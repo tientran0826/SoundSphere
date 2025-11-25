@@ -287,6 +287,7 @@ class MusicRepository:
         album_img_url: Optional[str],
     ) -> bool:
         """Create new album"""
+        print("Create album function")
         session = self.Session()
         try:
             album = Album(
@@ -300,6 +301,7 @@ class MusicRepository:
             return True
         except Exception as e:
             logger.error(f"Error creating album: {e}")
+            print(e)
             session.rollback()
             return False
         finally:

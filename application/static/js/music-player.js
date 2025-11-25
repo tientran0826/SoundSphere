@@ -4,6 +4,7 @@ let resolveMessageBox = null;
 let isQueueOpen = false;
 let queueInterval = null;
 
+
 // --- Message Box (Custom Alert/Confirm) Implementation ---
 function showMessage(title, message, isConfirm = false, onConfirm = null) {
     const box = document.getElementById('message-box');
@@ -582,8 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const trackAuthor = button.dataset.trackAuthor;
             const requestBy = button.dataset.userId;
             const identifier = button.dataset.identifier;
-            console.log("Adding track:", trackTitle, "URI:", trackUri);
-
+            console.log("Adding track:", trackTitle, "URI:", trackUri, "Identifier:", identifier);
             // Prevent double clicks
             button.disabled = true;
             button.classList.add('opacity-75', 'cursor-wait');
