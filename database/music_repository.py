@@ -419,6 +419,8 @@ class MusicRepository:
                     "track_title": t.track_title,
                     "url": t.url,
                     "track_author": t.track_author,
+                    "identifier": t.identifier,
+                    "requested_by": t.requested_by,
                 }
                 for t in sorted(
                     album.tracks, key=lambda x: getattr(x, "track_number", x.id)

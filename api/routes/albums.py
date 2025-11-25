@@ -1,9 +1,10 @@
 from typing import List
 
+import wavelink
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from api.dependencies import get_repo
+from api.dependencies import get_bot, get_repo, verify_user_in_voice
 from api.models import (
     AlbumCreate,
     AlbumResponse,
@@ -42,7 +43,10 @@ async def get_album_tracks(guild_id: int, album_name: str):
     try:
         repo = get_repo()
         tracks = repo.get_album_tracks(guild_id, album_name)
-        if not tracks:
+        albums = repo.get_all_albums(guild_id)
+        album_obj = next((a for a in albums if a.album_name == album_name), None)
+        print(album_obj)
+        if not album_obj:
             raise HTTPException(
                 status_code=404, detail=f"Album '{album_name}' not found"
             )
@@ -170,6 +174,78 @@ async def remove_track_from_album(guild_id: int, album_name: str, track_number: 
 
 
 @router.post("/{guild_id}/{album_name}/play", response_model=SuccessResponse)
+async def play_album_queue(guild_id: int, user_id: int, album_name: str):
+    """Play first track and add remaining album tracks to queue"""
+    try:
+        bot = get_bot()
+        repo = get_repo()
+        guild = bot.get_guild(guild_id)
+        vc = guild.voice_client
+
+        if not guild:
+            raise HTTPException(status_code=404, detail="Guild not found")
+
+        album_tracks = repo.add_album_to_queue(guild_id, album_name)
+        if not album_tracks:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Album '{album_name}' not found or has no tracks",
+            )
+
+        # Verify user is in voice channel
+        is_valid, message, user_channel, bot_channel = verify_user_in_voice(
+            guild, user_id, require_same_channel=True
+        )
+        if not is_valid:
+            raise HTTPException(status_code=403, detail=message)
+
+        # Clear existing queue
+        repo.clear_queue(guild_id)
+
+        # Add all tracks to queue
+        for track in album_tracks:
+            repo.save_to_queue(
+                guild_id,
+                track["track_title"],
+                track["url"],
+                track["identifier"],
+                track["track_author"],
+                track["requested_by"],
+            )
+
+        # Pop first track to play immediately
+        first_track = repo.pop_next_track(guild_id)
+        tracks = await wavelink.Playable.search(first_track.url)
+        playable = next((t for t in tracks if t.title == first_track.track_title), None)
+        if not playable:
+            raise HTTPException(status_code=404, detail="First track not found")
+
+        # Play first track
+        await vc.play(playable)
+
+        # Save play history
+        repo.save_play_history(
+            guild_id,
+            user_id,
+            playable.title,
+            playable.identifier,
+            playable.author,
+            playable.uri,
+        )
+
+        return SuccessResponse(
+            success=True,
+            message=f'Now playing: {playable.title}, album "{album_name}" ({len(album_tracks)-1} tracks remaining in queue).',
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding album to queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{guild_id}/{album_name}/add", response_model=SuccessResponse)
 async def add_album_to_queue(guild_id: int, album_name: str):
     """Add all album tracks to queue"""
     try:
@@ -181,10 +257,14 @@ async def add_album_to_queue(guild_id: int, album_name: str):
                 detail=f"Album '{album_name}' not found or has no tracks",
             )
 
-        repo.clear_queue(guild_id)
         for track in album_tracks:
             repo.save_to_queue(
-                guild_id, track["track_title"], track["url"], track["track_author"], 0
+                guild_id,
+                track["track_title"],
+                track["url"],
+                track["identifier"],
+                track["track_author"],
+                track["requested_by"],
             )
 
         return SuccessResponse(

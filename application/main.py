@@ -335,15 +335,24 @@ def connect_bot(guild_id):
 def album_page(guild_id, album_name):
     current_guild_name = session.get("current_guild_name", "Unknown Guild")
     user_id = session.get("discord_user_id")
-    if not session.get("discord_user_id"):
+    if not user_id:
         return redirect(url_for("index"))
 
     url = f"{FASTAPI_BASE_URL}/api/albums/{guild_id}/{album_name}"
     resp = requests.get(url)
-    if resp.status_code != 200:
-        return f"Failed to load album {album_name}", 404
+
+    if resp.status_code == 404:
+        # Album not found
+        return f"Album '{album_name}' does not exist.", 404
+    elif resp.status_code != 200:
+        # Some other error
+        return f"Failed to load album {album_name}", resp.status_code
 
     album_data = resp.json()
+
+    # Ensure tracks is always a list
+    if "tracks" not in album_data or album_data["tracks"] is None:
+        album_data["tracks"] = []
 
     return render_template(
         "album.html",

@@ -302,7 +302,7 @@ async def connect_to_voice(guild_id: int, user_id: int):
         # Connect to user's voice channel
         try:
             vc = await member.voice.channel.connect(cls=wavelink.Player)
-            vc.set_volume(50)  # Default volume
+            bot.set_volume(50)  # Default volume
             logger.info(
                 f"Connected to {member.voice.channel.name} in guild {guild.name}"
             )

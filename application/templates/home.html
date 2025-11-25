@@ -123,13 +123,14 @@
             <div class="flex items-center gap-4 mb-10">
                  <div class="h-10 w-1.5 rounded-full bg-gradient-to-b from-purple-400 to-blue-600"></div>
                 <h2 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tight">
-                    Server Essentials
+                    Server Albums
                 </h2>
             </div>
 
             <div id="album-list-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
 
             </div>
+
         <!-- Album modal at the end of body -->
         <div id="album-details-modal" class="hidden p-6">
             <img id="album-cover" class="rounded-xl mb-4 w-full" src="">
@@ -162,6 +163,11 @@
                             class="bg-gray-700 text-white px-4 py-2 rounded-full hover:bg-gray-600 font-bold">
                         Close
                     </button>
+
+                    <button id="goto-album-btn"
+                            class="bg-green-500 text-black px-4 py-2 rounded-full hover:bg-green-600 font-bold">
+                        Go to Album Page
+                    </button>
                 </div>
             </div>
         </div>
@@ -174,5 +180,6 @@
 {{ super() }}
 <script src="{{ url_for('static', filename='js/music-player.js') }}"></script>
 <script src="{{ url_for('static', filename='js/album-list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/album-model.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bot.js') }}"></script>
 {% endblock %}
