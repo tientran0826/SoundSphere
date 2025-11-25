@@ -35,6 +35,9 @@
         const GUILD_ID = "{{ guild_id }}";
         const GUILD_NAME = "{{ guild_name | safe }}";
         const FASTAPI_URL = "{{ FASTAPI_BASE_URL }}";
+        if (!FASTAPI_URL.startsWith("http")) {
+            throw new Error("FASTAPI_URL must include http:// or https://");
+        }
         const USER_ID = "{{ user_id }}";
     </script>
 
