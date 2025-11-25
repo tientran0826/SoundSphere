@@ -1,8 +1,9 @@
 /* General Styles */
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: #1e1e1e; /* Deeper, uniform dark background */
-    color: #e5e5e5; /* Light text for dark background */
+    /* Change 'Inter' to 'Montserrat' */
+    font-family: 'Montserrat', sans-serif;
+    background-color: #1e1e1e;
+    color: #e5e5e5;
     margin: 0;
     padding: 0;
 }

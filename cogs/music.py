@@ -201,7 +201,12 @@ class Music(commands.Cog):
                 return await ctx.send("No tracks found!")
             track = tracks[0]
             self.repo.save_to_queue(
-                ctx.guild.id, track.title, track.uri, track.author, ctx.author.id
+                ctx.guild.id,
+                track.title,
+                track.uri,
+                track.identifier,
+                track.author,
+                ctx.author.id,
             )
             await ctx.send(
                 embed=track_embed(track, ctx.author.id, title="📝 Added to Queue")
@@ -214,7 +219,12 @@ class Music(commands.Cog):
                 track = tracks[0]
                 await vc.play(track)
                 self.repo.save_play_history(
-                    ctx.guild.id, ctx.author.id, track.title, track.author, track.uri
+                    ctx.guild.id,
+                    ctx.author.id,
+                    track.title,
+                    track.identifier,
+                    track.author,
+                    track.uri,
                 )
                 await ctx.send(
                     embed=track_embed(

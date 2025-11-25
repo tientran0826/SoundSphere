@@ -29,7 +29,7 @@
         <button
             type="button"
             class="add-track-btn w-full bg-card-bg p-4 rounded-lg shadow-2xl flex flex-col items-start transition transform hover:shadow-xl hover:-translate-y-1 hover:ring-2 hover:ring-primary-green cursor-pointer text-left"
-            data-track-uri="{{ result.uri }}"
+            data-track-uri="{{ result.url }}"
             data-track-title="{{ result.title }}"
             data-track-author="{{ result.author }}"
             data-guild-id="{{ guild_id }}"
@@ -78,23 +78,7 @@
 
 </div>
 
-<div id="confirm-modal"
-     class="fixed inset-0 bg-black/70 backdrop-blur-sm
-            flex items-center justify-center
-            opacity-0 pointer-events-none
-            transition-all duration-300 z-50">
 
-    <div class="bg-card-bg rounded-xl shadow-2xl w-96 max-w-sm p-6 text-center transform scale-90 transition-all duration-300 mx-4 border border-gray-700">
-        <h2 class="text-xl font-bold mb-3 text-white">Track Added 🎶</h2>
-        <p id="confirm-message" class="text-gray-400 mb-6">
-            The track was added to queue.
-        </p>
-        <button id="confirm-ok-btn"
-                class="bg-primary-green text-black px-6 py-2.5 rounded-full hover:bg-[#1ed760] transition font-bold shadow-md w-full">
-            OK
-        </button>
-    </div>
-</div>
 
 {% endblock %}
 

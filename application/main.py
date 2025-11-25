@@ -21,6 +21,7 @@ DISCORD_API_BASE_URL = "https://discord.com/api/v10"
 LAVALINK_HOST = "192.168.100.150"
 LAVALINK_PORT = 2333
 LAVALINK_PASSWORD = "123"
+YOUTUBE_API_KEY = "AIzaSyDO0JaUZ8jkiCIr1BXgIPKXFYB2zEbcCpo"
 
 
 @app.before_request
@@ -175,7 +176,7 @@ def search_track(query):
                         "title": track_info.get("title"),
                         "author": track_info.get("author"),
                         "duration": track_info.get("length"),
-                        "uri": track_info.get("uri"),
+                        "url": track_info.get("uri"),
                         "identifier": track_info.get("identifier"),
                     }
                 )
@@ -191,7 +192,7 @@ def search_track(query):
                             "title": track_info.get("title"),
                             "author": track_info.get("author"),
                             "duration": track_info.get("length"),
-                            "uri": track_info.get("uri"),
+                            "url": track_info.get("uri"),
                             "identifier": track_info.get("identifier"),
                         }
                     )
@@ -209,7 +210,7 @@ def search_track(query):
                             "title": track_info.get("title"),
                             "author": track_info.get("author"),
                             "duration": track_info.get("length"),
-                            "uri": track_info.get("uri"),
+                            "url": track_info.get("uri"),
                             "identifier": track_info.get("identifier"),
                         }
                     )
@@ -230,52 +231,6 @@ def search_track(query):
         user_id=user_id,
         FASTAPI_BASE_URL=FASTAPI_BASE_URL,  # Add this line
     )
-
-
-# @app.route("/play_track", methods=["POST"])
-# def play_track():
-#     if not g.user_id:
-#         return redirect(url_for('index'))
-
-#     # Lấy dữ liệu từ form
-#     track_uri = request.form.get('track_uri')
-#     track_author = request.form.get('track_author')
-#     track_title = request.form.get('track_title')
-#     identifier = request.form.get('identifier')
-#     user_id = session.get('discord_user_id')
-#     guild_id = session.get('current_guild_id')
-
-#     if not guild_id or not track_uri:
-#         flash("Lỗi: Thiếu ID Guild hoặc Track URI để thêm vào hàng đợi.", 'error')
-#         return redirect(url_for('dashboard'))
-
-#     queue_url = f"{FASTAPI_BASE_URL}/api/queue/{guild_id}"
-
-#     payload = {
-#         "track_title": track_title,
-#         "url": track_uri,
-#         "track_author": track_author,
-#         "identifier": identifier,
-#         "requested_by": int(user_id)
-#     }
-#     try:
-#         response = requests.post(queue_url, json=payload)
-#         response.raise_for_status() # Raise HTTPError cho lỗi 4xx/5xx
-
-#         # 3. Xử lý phản hồi
-#         if response.status_code == 200:
-#             flash(f"✅ Đã thêm track vào hàng đợi thành công!", 'success')
-#         else:
-#             # Cố gắng lấy chi tiết lỗi từ JSON response của FastAPI
-#             error_detail = response.json().get('detail', 'Lỗi không xác định.')
-#             flash(f"⚠️ Bot API gặp lỗi khi thêm vào queue: {error_detail}", 'error')
-
-#     except requests.exceptions.RequestException as e:
-#         app.logger.error(f"Error calling Bot API queue endpoint: {e}")
-#         flash(f"❌ Lỗi kết nối tới Bot API. Vui lòng kiểm tra bot đã chạy chưa. Chi tiết: {e}", 'error')
-
-#     # Chuyển hướng về trang điều khiển (guild_control) để xem trạng thái mới
-#     return redirect(url_for('home', guild_id=guild_id))
 
 
 @app.route("/dashboard")
@@ -376,23 +331,57 @@ def connect_bot(guild_id):
 
 @app.route("/home")
 def home():
-    """Trang điều khiển chi tiết cho Guild đã chọn."""
-    if not g.user_id:
+    if not session.get("discord_user_id"):
         return redirect(url_for("index"))
 
     current_guild_id = session.get("current_guild_id")
-    user_id = session.get("discord_user_id")
     if not current_guild_id:
         return redirect(url_for("dashboard"))
 
     current_guild_name = session.get("current_guild_name", "Unknown Guild")
     user_id = session.get("discord_user_id")
+    trending_regions = {"K-Pop": "KR", "VietPop": "VN", "Global": "US", "UK Hits": "GB"}
+
+    # The main change: Use a dictionary to store data, keyed by the region name
+    trending_data = {}
+
+    for genre_name, region_code in trending_regions.items():
+        url = "https://www.googleapis.com/youtube/v3/videos"
+        params = {
+            "key": YOUTUBE_API_KEY,
+            "part": "snippet,statistics",
+            "chart": "mostPopular",
+            "videoCategoryId": "10",
+            "regionCode": region_code,
+            "maxResults": 5,
+        }
+
+        response = requests.get(url, params=params).json()
+
+        # Create an empty list for the current region/genre
+        videos_for_region = []
+
+        for item in response.get("items", []):
+            videos_for_region.append(
+                {
+                    "title": item["snippet"]["title"],
+                    "thumbnail": item["snippet"]["thumbnails"]["medium"]["url"],
+                    "url": f"https://www.youtube.com/watch?v={item['id']}",
+                    "video_id": item["id"],
+                    "genre": genre_name,
+                    "view_count": item["statistics"].get("viewCount", "N/A"),
+                }
+            )
+
+        # Store the list of videos under the region name in the main dictionary
+        trending_data[genre_name] = videos_for_region
     return render_template(
         "home.html",
         guild_id=current_guild_id,
         user_id=user_id,
         guild_name=current_guild_name,
         FASTAPI_BASE_URL=FASTAPI_BASE_URL,
+        trending_data=trending_data,
     )
 
 

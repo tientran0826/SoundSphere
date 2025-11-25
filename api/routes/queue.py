@@ -98,19 +98,25 @@ async def jump_to_track(guild_id: int, index: int):
 
         # Get the track
         queue = repo.get_all_tracks_from_queue(guild_id)
-        print(index)
-        if index < 1 or index > len(queue):
-            raise HTTPException(status_code=400, detail="Invalid track index")
-        track_to_play = queue[index - 1]
-        print(track_to_play)
-        repo.remove_from_queue(guild_id, track_to_play.position)
+        track_to_play = next((t for t in queue if t.position == index), None)
 
-        # Search playable
         tracks = await wavelink.Playable.search(track_to_play.url)
         if not tracks:
             raise HTTPException(status_code=404, detail="Track not found on YouTube")
 
-        playable = tracks[0]
+        # Find the track that matches the original title
+        playable = None
+        for track in tracks:
+            if track.title == track_to_play.track_title:
+                playable = track
+                repo.remove_from_queue(guild_id, track_to_play.position)
+                break
+
+        if playable is None:
+            logger.warning(
+                f"Exact match not found for '{track_to_play.track_title}'. Using first search result."
+            )
+            playable = tracks[0]
 
         # Play
         await vc.play(playable)

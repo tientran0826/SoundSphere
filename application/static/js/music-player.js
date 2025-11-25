@@ -96,15 +96,58 @@ function toggleQueue() {
 }
 
 async function togglePlayPause() {
-    const btn = document.getElementById('play-pause-btn');
-    // Ensure we have latest state
-    await fetchBotStatus(); // fetch current track status
-    console.log("Current isPlaying:", paused);
+    const response = await fetch(`${FASTAPI_URL}/api/bot/${GUILD_ID}/status`);
+    const data = await response.json();
+    const info = data.status || {};
+
+    isPlaying = info.playing;
+    isPaused = info.paused;
+    currentTrack = info.current_track;
+
     if (isPlaying) {
         const command = isPaused ? 'resume' : 'pause';
         console.log("Toggling play/pause:", command);
         sendControlCommand(command);
     }
+}
+
+function sendSeek(seconds) {
+    console.log("Sending seek with:", USER_ID); // debug
+    console.log("Seeking to seconds:", seconds);
+    fetch(`${FASTAPI_URL}/api/bot/${GUILD_ID}/seek`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            user_id: USER_ID,    // must be number
+            position: seconds    // seconds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        fetchBotStatus();    // update UI after seek
+    })
+    .catch(err => console.error("Seek error:", err));
+}
+
+function seek(event) {
+    const bar = event.currentTarget;
+    const rect = bar.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const width = rect.width;
+
+    // Percent user clicked
+    const percent = clickX / width;
+
+    // totalSeconds: update this every fetchBotStatus()
+    const totalSeconds = window.currentTrackDuration || 0;
+
+    // New seek position (in seconds)
+    const newPosition = Math.floor(percent * totalSeconds);
+
+    console.log("Seeking to:", newPosition, "seconds");
+
+    // Send to backend
+    sendSeek(newPosition);
 }
 
 function sendControlCommand(command) {
@@ -199,6 +242,7 @@ function seek(event) {
     document.getElementById('current-time').textContent = formatDuration(seekTimeMs);
     console.log("Seeking to:", seekTimeMs, "ms");
 }
+
 function fetchQueueData() {
     fetch(`${FASTAPI_URL}/api/queue/${GUILD_ID}`)
         .then(response => response.ok ? response.json() : { queue: [] })
@@ -219,7 +263,7 @@ function renderQueue(queue) {
     const container = document.getElementById('queue-list');
     if (!container) return;
 
-    if (!queue.length) {
+    if (!Array.isArray(queue) || queue.length === 0) {
         container.innerHTML = '<p class="text-gray-500 text-center py-8">Queue is empty. Add a track!</p>';
         return;
     }
@@ -229,7 +273,7 @@ function renderQueue(queue) {
         html += `
             <div class="queue-item p-3 rounded-lg border border-gray-700 flex justify-between items-center mb-2">
                 <div class="flex items-center space-x-3 flex-1 min-w-0">
-                    <span class="text-gray-400 font-semibold text-sm w-6">${track.position + 1}</span>
+                    <span class="text-gray-400 font-semibold text-sm w-6">${track.position}</span>
                     <img src="https://img.youtube.com/vi/${track.identifier}/hqdefault.jpg" alt="Thumbnail" class="w-12 h-12 rounded">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-white truncate">${track.title}</p>
@@ -338,7 +382,6 @@ function fetchBotStatus() {
             const currentPos = track ? track.position : 0;
             const totalDur = track ? track.duration : 1;
             const progressPercent = (currentPos / totalDur) * 100;
-
             const currentTime = document.getElementById('current-time');
             const totalTime = document.getElementById('total-time');
             const progressFill = document.getElementById('progress-bar-fill');
@@ -544,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const trackAuthor = button.dataset.trackAuthor;
             const requestBy = button.dataset.userId;
             const identifier = button.dataset.identifier;
+            console.log("Adding track:", trackTitle, "URI:", trackUri);
 
             // Prevent double clicks
             button.disabled = true;
@@ -583,6 +627,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 requested_by: requestBy,
                                 identifier: identifier
                             })
+                        }).then(response => response.json())
+                        .then(data => {
+                            console.log("Track started:", data);
+                            // Now render the queue after the track starts
+                            renderQueue();
+                        })
+                        .catch(err => {
+                            console.error("Failed to play track:", err);
                         });
                     }
 
@@ -655,7 +707,6 @@ function updateVolume(e) {
     const rect = container.getBoundingClientRect();
     let width = e.clientX - rect.left;
     width = Math.max(0, Math.min(width, rect.width));
-
     const volumePercent = Math.round((width / rect.width) * 100);
     fill.style.width = `${volumePercent}%`;
 
@@ -670,4 +721,70 @@ function updateVolume(e) {
     })
     .then(res => res.json())
     .catch(err => console.error('Volume update failed', err));
+}
+
+let isSeeking = false;
+let progressBar;
+let progressFill;
+
+document.addEventListener("DOMContentLoaded", () => {
+    progressBar = document.querySelector(".progress-bar-container");
+    progressFill = document.getElementById("progress-bar-fill");
+
+    // Mouse Events
+    progressBar.addEventListener("mousedown", startSeek);
+    window.addEventListener("mousemove", moveSeek);
+    window.addEventListener("mouseup", endSeek);
+
+    // Touch Events
+    progressBar.addEventListener("touchstart", startSeek);
+    window.addEventListener("touchmove", moveSeek);
+    window.addEventListener("touchend", endSeek);
+});
+
+function startSeek(e) {
+    isSeeking = true;
+    updateSeekPreview(e);
+}
+
+function moveSeek(e) {
+    if (!isSeeking) return;
+    updateSeekPreview(e);
+}
+
+async function endSeek(e) {
+    if (!isSeeking) return;
+    isSeeking = false;
+
+    const newPosition = await getSeekSeconds(e); // await Promise
+    console.log("Final seek:", newPosition);
+
+    sendSeek(newPosition);
+}
+
+async function getSeekSeconds(e) {
+    const rect = progressBar.getBoundingClientRect();
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+
+    const percent = x / rect.width;
+
+    // ⚠ You are fetching status AGAIN here — not good
+    const response = await fetch(`${FASTAPI_URL}/api/bot/${GUILD_ID}/status`);
+    const data = await response.json();
+    const info = data.status || {};
+
+    const totalSeconds = info.current_track ? info.current_track.duration : 0;
+    console.log("Total track duration:", totalSeconds);
+    console.log("Seek percent:", percent * totalSeconds);
+    return Math.floor(percent * totalSeconds);
+}
+
+function updateSeekPreview(e) {
+    const rect = progressBar.getBoundingClientRect();
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+    const x = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+
+    const percent = (x / rect.width) * 100;
+    progressFill.style.width = `${percent}%`;
 }

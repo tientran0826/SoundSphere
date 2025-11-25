@@ -171,9 +171,10 @@
 
                 <div class="flex items-center w-full max-w-md space-x-2">
                     <span id="current-time" class="text-xs text-gray-400">0:00</span>
-                    <div class="progress-bar-container flex-1 h-1 bg-gray-700 rounded cursor-pointer" onclick="seek(event)">
-                        <div id="progress-bar-fill" class="h-1 bg-primary-green rounded" style="width: 0%;"></div>
-                    </div>
+<div class="progress-bar-container flex-1 h-1 bg-gray-700 rounded cursor-pointer"
+     onclick="seek(event)">
+    <div id="progress-bar-fill" class="h-1 bg-primary-green rounded" style="width: 0%;"></div>
+</div>
                     <span id="total-time" class="text-xs text-gray-400">0:00</span>
                 </div>
             </div>
@@ -186,7 +187,6 @@
                     <div
                         id="volume-bar-container"
                         class="flex-1 h-1 bg-gray-700 rounded cursor-pointer relative"
-                        onmousedown="startVolumeDrag(event)"
                     >
                         <div
                             id="volume-bar-fill"
@@ -198,7 +198,23 @@
             </div>
         </div>
     </div>
+<div id="confirm-modal"
+     class="fixed inset-0 bg-black/70 backdrop-blur-sm
+            flex items-center justify-center
+            opacity-0 pointer-events-none
+            transition-all duration-300 z-50">
 
+    <div class="bg-card-bg rounded-xl shadow-2xl w-96 max-w-sm p-6 text-center transform scale-90 transition-all duration-300 mx-4 border border-gray-700">
+        <h2 class="text-xl font-bold mb-3 text-white">Track Added 🎶</h2>
+        <p id="confirm-message" class="text-gray-400 mb-6">
+            The track was added to queue.
+        </p>
+        <button id="confirm-ok-btn"
+                class="bg-primary-green text-black px-6 py-2.5 rounded-full hover:bg-[#1ed760] transition font-bold shadow-md w-full">
+            OK
+        </button>
+    </div>
+</div>
 {% endblock %}
 
 <script src="{{ url_for('static', filename='js/music-player.js') }}"></script>

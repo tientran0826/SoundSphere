@@ -113,13 +113,18 @@ class BotStatusResponse(BaseModel):
     status: Dict[str, Any]
 
 
+class SeekRequest(BaseModel):
+    user_id: int
+    position: int  # in seconds
+
+
 class VolumeAbsoluteRequest(BaseModel):
     user_id: int
     volume: int  # 0-100
 
 
 # ---------------------
-# User stqatus
+# User status
 # ---------------------
 class CurrentUserStatusRequest(BaseModel):
     user_id: int  # Discord user ID

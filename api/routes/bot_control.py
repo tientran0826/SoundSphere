@@ -5,6 +5,7 @@ from loguru import logger
 from api.dependencies import get_bot, get_repo, verify_user_in_voice
 from api.models import (
     BotStatusResponse,
+    SeekRequest,
     SuccessResponse,
     TrackCreate,
     UserVoiceCheckResponse,
@@ -301,6 +302,7 @@ async def connect_to_voice(guild_id: int, user_id: int):
         # Connect to user's voice channel
         try:
             vc = await member.voice.channel.connect(cls=wavelink.Player)
+            vc.set_volume(50)  # Default volume
             logger.info(
                 f"Connected to {member.voice.channel.name} in guild {guild.name}"
             )
@@ -365,7 +367,6 @@ async def play_track_api(guild_id: int, track: TrackCreate):
         bot = get_bot()
         repo = get_repo()
         guild = bot.get_guild(guild_id)
-
         if not guild:
             raise HTTPException(status_code=404, detail="Guild not found")
 
@@ -385,14 +386,18 @@ async def play_track_api(guild_id: int, track: TrackCreate):
             )
 
         # Search for track
-        tracks = await wavelink.Playable.search(track.track_title)
-
+        tracks = await wavelink.Playable.search(track.url)
+        playable = None
         if not tracks:
             raise HTTPException(status_code=404, detail="Track not found")
-
-        playable = tracks[0]
+        for t in tracks:
+            if t.title == track.track_title:
+                playable = t
 
         # Add to queue
+        if playable is None:
+            raise HTTPException(status_code=404, detail="Something wrong, retry")
+
         repo.save_to_queue(
             guild_id,
             playable.title,
@@ -411,6 +416,7 @@ async def play_track_api(guild_id: int, track: TrackCreate):
                     guild_id,
                     track.requested_by,
                     playable.title,
+                    playable.identifier,
                     playable.author,
                     playable.uri,
                 )
@@ -426,6 +432,47 @@ async def play_track_api(guild_id: int, track: TrackCreate):
         raise
     except Exception as e:
         logger.error(f"Error playing track: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{guild_id}/seek", response_model=SuccessResponse)
+async def seek_track(guild_id: int, req: SeekRequest):
+    """
+    Seek to a specific time position (already in seconds).
+    """
+    try:
+        bot = get_bot()
+        guild = bot.get_guild(guild_id)
+
+        if not guild:
+            raise HTTPException(status_code=404, detail="Guild not found")
+
+        # Check if user is in voice channel
+        is_valid, message, _, _ = verify_user_in_voice(
+            guild, req.user_id, require_same_channel=True
+        )
+        if not is_valid:
+            raise HTTPException(status_code=403, detail=message)
+
+        vc = guild.voice_client
+        if not vc or not vc.current:
+            raise HTTPException(status_code=400, detail="Nothing is playing")
+
+        # Track duration and clamp seek value
+        duration_sec = vc.current.length // 1000  # yours returns ms → convert once
+        seek_sec = max(0, min(req.position, duration_sec))
+
+        await vc.seek(seek_sec * 1000)  # vc.seek() still needs milliseconds
+
+        return SuccessResponse(
+            success=True,
+            message=f"⏩ Seeked to {seek_sec}s",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error seeking: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
