@@ -222,7 +222,7 @@ async def run_api():
     set_bot_instance(bot)
     logger.info("Bot instance set for API")
 
-    config = uvicorn.Config(app, port=5000, log_level="info")
+    config = uvicorn.Config(app, host="0.0.0.0", port=5000, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 
