@@ -8,8 +8,8 @@ spec:
     app: soundsphere-bot
   type: NodePort
   ports:
-    - name: music-api
+    - name: flask-public
       protocol: TCP
-      port: 8000
-      targetPort: 5000
-      nodePort: 30080
+      port: 8000        # external port
+      targetPort: 8000  # container Flask port
+      nodePort: 3079   # NodePort for external access

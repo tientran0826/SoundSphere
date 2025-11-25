@@ -2,16 +2,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: soundsphere-bot
-  namespace: production
+  namespace: dev
 spec:
-  ports:
-    - name: http
-      protocol: TCP
-      port: 80
-      targetPort: 8080
-    - name: api-control
-      protocol: TCP
-      port: 5000
-      targetPort: 5000
-      nodePort: 30269
+  selector:
+    app: soundsphere-bot
   type: NodePort
+  ports:
+    - name: flask-public
+      protocol: TCP
+      port: 8000        # external port
+      targetPort: 8000  # container Flask port
+      nodePort: 30080    # NodePort for external access
