@@ -201,7 +201,12 @@ class Music(commands.Cog):
                 return await ctx.send("No tracks found!")
             track = tracks[0]
             self.repo.save_to_queue(
-                ctx.guild.id, track.title, track.uri, track.author, ctx.author.id
+                ctx.guild.id,
+                track.title,
+                track.uri,
+                track.identifier,
+                track.author,
+                ctx.author.id,
             )
             await ctx.send(
                 embed=track_embed(track, ctx.author.id, title="📝 Added to Queue")
@@ -214,7 +219,12 @@ class Music(commands.Cog):
                 track = tracks[0]
                 await vc.play(track)
                 self.repo.save_play_history(
-                    ctx.guild.id, ctx.author.id, track.title, track.author, track.uri
+                    ctx.guild.id,
+                    ctx.author.id,
+                    track.title,
+                    track.identifier,
+                    track.author,
+                    track.uri,
                 )
                 await ctx.send(
                     embed=track_embed(
@@ -391,10 +401,12 @@ class Music(commands.Cog):
     @commands.command()
     async def create_album(self, ctx, *, album_name: str):
         """Create an album by adding tracks to the database."""
+        print(album_name)
         self.repo.create_album(
             guild_id=ctx.guild.id,
             album_name=album_name,
             requested_by=ctx.author.id,
+            album_img_url=None,
         )
         await ctx.send(
             f"📀 Album '{album_name}' created successfully! Please add tracks."
@@ -553,6 +565,7 @@ class Music(commands.Cog):
             url=choose_track.uri,
             track_author=choose_track.author,
             requested_by=ctx.author.id,
+            identifier=choose_track.identifier,
             track_number=next_track_number,
         )
 

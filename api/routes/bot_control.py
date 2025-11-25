@@ -5,10 +5,12 @@ from loguru import logger
 from api.dependencies import get_bot, get_repo, verify_user_in_voice
 from api.models import (
     BotStatusResponse,
+    SeekRequest,
     SuccessResponse,
     TrackCreate,
     UserVoiceCheckResponse,
     VoiceControlRequest,
+    VolumeAbsoluteRequest,
 )
 
 router = APIRouter(prefix="/api/bot", tags=["Bot Control"])
@@ -91,6 +93,7 @@ async def get_guild_status(guild_id: int):
                 "duration": vc.current.length // 1000,
                 "position": vc.position // 1000,
                 "uri": vc.current.uri,
+                "identifier": vc.current.identifier,
             }
 
         return BotStatusResponse(success=True, status=status)
@@ -242,6 +245,32 @@ async def control_playback(guild_id: int, control: VoiceControlRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{guild_id}/volume_absolute", response_model=SuccessResponse)
+async def set_volume_absolute(guild_id: int, volume_req: VolumeAbsoluteRequest):
+    """
+    Set bot volume directly (0-100).
+    """
+    bot = get_bot()
+    guild = bot.get_guild(guild_id)
+    if not guild:
+        raise HTTPException(status_code=404, detail="Guild not found")
+
+    is_valid, message, _, _ = verify_user_in_voice(
+        guild, volume_req.user_id, require_same_channel=True
+    )
+    if not is_valid:
+        raise HTTPException(status_code=403, detail=message)
+
+    vc = guild.voice_client
+    if not vc:
+        raise HTTPException(status_code=400, detail="Bot not connected to voice")
+
+    new_volume = max(0, min(100, volume_req.volume))
+    await vc.set_volume(new_volume)
+
+    return SuccessResponse(success=True, message=f"Volume set to {new_volume}%")
+
+
 @router.post("/{guild_id}/connect/{user_id}", response_model=SuccessResponse)
 async def connect_to_voice(guild_id: int, user_id: int):
     """Connect bot to user's voice channel"""
@@ -273,6 +302,7 @@ async def connect_to_voice(guild_id: int, user_id: int):
         # Connect to user's voice channel
         try:
             vc = await member.voice.channel.connect(cls=wavelink.Player)
+            bot.set_volume(50)  # Default volume
             logger.info(
                 f"Connected to {member.voice.channel.name} in guild {guild.name}"
             )
@@ -337,7 +367,6 @@ async def play_track_api(guild_id: int, track: TrackCreate):
         bot = get_bot()
         repo = get_repo()
         guild = bot.get_guild(guild_id)
-
         if not guild:
             raise HTTPException(status_code=404, detail="Guild not found")
 
@@ -357,18 +386,23 @@ async def play_track_api(guild_id: int, track: TrackCreate):
             )
 
         # Search for track
-        tracks = await wavelink.Playable.search(track.track_title)
-
+        tracks = await wavelink.Playable.search(track.url)
+        playable = None
         if not tracks:
             raise HTTPException(status_code=404, detail="Track not found")
-
-        playable = tracks[0]
+        for t in tracks:
+            if t.title == track.track_title:
+                playable = t
 
         # Add to queue
+        if playable is None:
+            raise HTTPException(status_code=404, detail="Something wrong, retry")
+
         repo.save_to_queue(
             guild_id,
             playable.title,
             playable.uri,
+            playable.identifier,
             playable.author,
             track.requested_by,
         )
@@ -382,6 +416,7 @@ async def play_track_api(guild_id: int, track: TrackCreate):
                     guild_id,
                     track.requested_by,
                     playable.title,
+                    playable.identifier,
                     playable.author,
                     playable.uri,
                 )
@@ -397,4 +432,102 @@ async def play_track_api(guild_id: int, track: TrackCreate):
         raise
     except Exception as e:
         logger.error(f"Error playing track: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{guild_id}/seek", response_model=SuccessResponse)
+async def seek_track(guild_id: int, req: SeekRequest):
+    """
+    Seek to a specific time position (already in seconds).
+    """
+    try:
+        bot = get_bot()
+        guild = bot.get_guild(guild_id)
+
+        if not guild:
+            raise HTTPException(status_code=404, detail="Guild not found")
+
+        # Check if user is in voice channel
+        is_valid, message, _, _ = verify_user_in_voice(
+            guild, req.user_id, require_same_channel=True
+        )
+        if not is_valid:
+            raise HTTPException(status_code=403, detail=message)
+
+        vc = guild.voice_client
+        if not vc or not vc.current:
+            raise HTTPException(status_code=400, detail="Nothing is playing")
+
+        # Track duration and clamp seek value
+        duration_sec = vc.current.length // 1000  # yours returns ms → convert once
+        seek_sec = max(0, min(req.position, duration_sec))
+
+        await vc.seek(seek_sec * 1000)  # vc.seek() still needs milliseconds
+
+        return SuccessResponse(
+            success=True,
+            message=f"⏩ Seeked to {seek_sec}s",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error seeking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/{guild_id}/users-in-channel",
+    response_model=dict,
+)
+async def get_users_in_same_channel(guild_id: int):
+    """
+    Return list of members in same voice channel as the bot, including avatar URLs
+    """
+    try:
+        bot = get_bot()
+        guild = bot.get_guild(guild_id)
+
+        if not guild:
+            raise HTTPException(status_code=404, detail="Guild not found")
+
+        vc = guild.voice_client
+        if not vc or not vc.channel:
+            return {
+                "success": False,
+                "channel": None,
+                "members": [],
+                "message": "Bot is not connected to any voice channel",
+            }
+
+        channel = vc.channel
+
+        members = []
+        for member in channel.members:
+            avatar_url = (
+                member.display_avatar.url
+                if hasattr(member.display_avatar, "url")
+                else None
+            )
+
+            members.append(
+                {
+                    "user_id": member.id,
+                    "name": member.display_name,
+                    "is_bot": member.bot,
+                    "status": str(member.status),
+                    "avatar": avatar_url,
+                }
+            )
+
+        return {
+            "success": True,
+            "channel": channel.name,
+            "members": members,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving members in bot channel: {e}")
         raise HTTPException(status_code=500, detail=str(e))

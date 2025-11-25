@@ -1,9 +1,10 @@
 from typing import List
 
+import wavelink
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 
-from api.dependencies import get_repo
+from api.dependencies import get_bot, get_repo, verify_user_in_voice
 from api.models import (
     AlbumCreate,
     AlbumResponse,
@@ -28,11 +29,37 @@ async def get_albums(guild_id: int):
                 name=a.album_name,
                 created_by=a.created_by,
                 track_count=len(a.tracks),
+                album_img_url=a.album_img_url,
+                created_at=a.created_at.isoformat(),
             )
             for a in albums
         ]
     except Exception as e:
         logger.error(f"Error getting albums: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{guild_id}/{album_name}", response_model=SuccessResponse)
+async def update_album_info(guild_id: int, album_name: str, album: AlbumCreate):
+    """Update album information"""
+    try:
+        repo = get_repo()
+        success = repo.update_album_info(
+            guild_id,
+            album_name=album.album_name,
+            album_img_url=album.album_img_url,
+        )
+
+        if success:
+            return SuccessResponse(
+                success=True, message=f'Album "{album_name}" updated'
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Album not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating album info: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -42,7 +69,10 @@ async def get_album_tracks(guild_id: int, album_name: str):
     try:
         repo = get_repo()
         tracks = repo.get_album_tracks(guild_id, album_name)
-        if not tracks:
+        albums = repo.get_all_albums(guild_id)
+        album_obj = next((a for a in albums if a.album_name == album_name), None)
+
+        if not album_obj:
             raise HTTPException(
                 status_code=404, detail=f"Album '{album_name}' not found"
             )
@@ -50,10 +80,13 @@ async def get_album_tracks(guild_id: int, album_name: str):
         return AlbumTracksResponse(
             success=True,
             album_name=album_name,
+            album_img_url=album_obj.album_img_url,
+            created_at=album_obj.created_at.isoformat(),
             tracks=[
                 AlbumTrackResponse(
                     track_number=t.track_number,
                     title=t.track_title,
+                    identifier=t.identifier,
                     author=t.track_author,
                     url=t.url,
                     requested_by=t.requested_by,
@@ -73,7 +106,9 @@ async def create_album(guild_id: int, album: AlbumCreate):
     """Create new album"""
     try:
         repo = get_repo()
-        success = repo.create_album(guild_id, album.album_name, album.requested_by)
+        success = repo.create_album(
+            guild_id, album.album_name, album.requested_by, album.album_img_url
+        )
 
         if success:
             return SuccessResponse(
@@ -122,6 +157,7 @@ async def add_track_to_album(guild_id: int, album_name: str, track: TrackCreate)
             album.id,
             track.track_title,
             track.url,
+            track.identifier,
             track.track_author,
             track.requested_by,
         )
@@ -169,6 +205,78 @@ async def remove_track_from_album(guild_id: int, album_name: str, track_number: 
 
 
 @router.post("/{guild_id}/{album_name}/play", response_model=SuccessResponse)
+async def play_album_queue(guild_id: int, user_id: int, album_name: str):
+    """Play first track and add remaining album tracks to queue"""
+    try:
+        bot = get_bot()
+        repo = get_repo()
+        guild = bot.get_guild(guild_id)
+        vc = guild.voice_client
+
+        if not guild:
+            raise HTTPException(status_code=404, detail="Guild not found")
+
+        album_tracks = repo.add_album_to_queue(guild_id, album_name)
+        if not album_tracks:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Album '{album_name}' not found or has no tracks",
+            )
+
+        # Verify user is in voice channel
+        is_valid, message, user_channel, bot_channel = verify_user_in_voice(
+            guild, user_id, require_same_channel=True
+        )
+        if not is_valid:
+            raise HTTPException(status_code=403, detail=message)
+
+        # Clear existing queue
+        repo.clear_queue(guild_id)
+
+        # Add all tracks to queue
+        for track in album_tracks:
+            repo.save_to_queue(
+                guild_id,
+                track["track_title"],
+                track["url"],
+                track["identifier"],
+                track["track_author"],
+                track["requested_by"],
+            )
+
+        # Pop first track to play immediately
+        first_track = repo.pop_next_track(guild_id)
+        tracks = await wavelink.Playable.search(first_track.url)
+        playable = next((t for t in tracks if t.title == first_track.track_title), None)
+        if not playable:
+            raise HTTPException(status_code=404, detail="First track not found")
+
+        # Play first track
+        await vc.play(playable)
+
+        # Save play history
+        repo.save_play_history(
+            guild_id,
+            user_id,
+            playable.title,
+            playable.identifier,
+            playable.author,
+            playable.uri,
+        )
+
+        return SuccessResponse(
+            success=True,
+            message=f'Now playing: {playable.title}, album "{album_name}" ({len(album_tracks)-1} tracks remaining in queue).',
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding album to queue: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{guild_id}/{album_name}/add", response_model=SuccessResponse)
 async def add_album_to_queue(guild_id: int, album_name: str):
     """Add all album tracks to queue"""
     try:
@@ -180,10 +288,14 @@ async def add_album_to_queue(guild_id: int, album_name: str):
                 detail=f"Album '{album_name}' not found or has no tracks",
             )
 
-        repo.clear_queue(guild_id)
         for track in album_tracks:
             repo.save_to_queue(
-                guild_id, track["track_title"], track["url"], track["track_author"], 0
+                guild_id,
+                track["track_title"],
+                track["url"],
+                track["identifier"],
+                track["track_author"],
+                track["requested_by"],
             )
 
         return SuccessResponse(

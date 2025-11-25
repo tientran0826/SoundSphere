@@ -6,14 +6,10 @@ metadata:
 spec:
   selector:
     app: soundsphere-bot
-  ports:
-    - name: http
-      protocol: TCP
-      port: 80
-      targetPort: 8080
-    - name: api-control
-      protocol: TCP
-      port: 5000
-      targetPort: 5000
-      nodePort: 30268
   type: NodePort
+  ports:
+    - name: flask-public
+      protocol: TCP
+      port: 8000        # external port
+      targetPort: 8000  # container Flask port
+      nodePort: 3079   # NodePort for external access

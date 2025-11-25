@@ -66,6 +66,7 @@ class MusicRepository:
         guild_id: int,
         user_id: int,
         track_title: str,
+        identifier: Optional[str],
         track_author: str,
         url: str,
     ) -> bool:
@@ -77,6 +78,7 @@ class MusicRepository:
                 user_id=user_id,
                 track_title=track_title,
                 track_author=track_author,
+                identifier=identifier,
                 url=url,
             )
             session.add(history)
@@ -112,6 +114,7 @@ class MusicRepository:
         guild_id: int,
         track_title: str,
         url: str,
+        identifier: Optional[str],
         track_author: str,
         requested_by: int,
     ) -> bool:
@@ -130,6 +133,7 @@ class MusicRepository:
                 track_title=track_title,
                 url=url,
                 requested_by=requested_by,
+                identifier=identifier,
                 track_author=track_author,
                 position=next_pos,
             )
@@ -211,6 +215,34 @@ class MusicRepository:
         finally:
             session.close()
 
+    def jump_to_track(self, guild_id: int, track_position: int) -> bool:
+        """Set the queue's current track to the specified position"""
+        session = self.Session()
+        try:
+            # Example: store current track in some QueueStatus table or update a flag in QueueTracks
+            current_track = (
+                session.query(QueueTracks)
+                .filter_by(guild_id=guild_id, position=track_position)
+                .first()
+            )
+
+            if not current_track:
+                return False
+
+            # Update "currently playing" marker
+            session.query(QueueTracks).filter_by(guild_id=guild_id).update(
+                {"is_playing": False}
+            )
+            current_track.is_playing = True
+            session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"Error jumping to track: {e}")
+            session.rollback()
+            return False
+        finally:
+            session.close()
+
     def clear_queue(self, guild_id: int) -> bool:
         """Clear entire queue"""
         session = self.Session()
@@ -247,18 +279,29 @@ class MusicRepository:
     # ----------------------
     # Album Management
     # ----------------------
-    def create_album(self, guild_id: int, album_name: str, requested_by: int) -> bool:
+    def create_album(
+        self,
+        guild_id: int,
+        album_name: str,
+        requested_by: int,
+        album_img_url: Optional[str],
+    ) -> bool:
         """Create new album"""
+        print("Create album function")
         session = self.Session()
         try:
             album = Album(
-                guild_id=guild_id, album_name=album_name, created_by=requested_by
+                guild_id=guild_id,
+                album_name=album_name,
+                created_by=requested_by,
+                album_img_url=album_img_url,
             )
             session.add(album)
             session.commit()
             return True
         except Exception as e:
             logger.error(f"Error creating album: {e}")
+            print(e)
             session.rollback()
             return False
         finally:
@@ -302,6 +345,29 @@ class MusicRepository:
         finally:
             session.close()
 
+    def update_album_info(
+        self, guild_id: int, album_name: str, album_img_url: str
+    ) -> bool:
+        """Update album image URL"""
+        session = self.Session()
+        try:
+            album = (
+                session.query(Album)
+                .filter_by(guild_id=guild_id, album_name=album_name)
+                .first()
+            )
+            if album:
+                album.album_img_url = album_img_url
+                session.commit()
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error updating album image: {e}")
+            session.rollback()
+            return False
+        finally:
+            session.close()
+
     def get_album_tracks(self, guild_id: int, album_name: str) -> List[AlbumTrack]:
         """Get all tracks from specific album"""
         session = self.Session()
@@ -325,6 +391,7 @@ class MusicRepository:
         album_id: int,
         track_title: str,
         url: str,
+        identifier: Optional[str],
         track_author: str,
         requested_by: int,
     ) -> Optional[AlbumTrack]:
@@ -345,6 +412,7 @@ class MusicRepository:
                 track_title=track_title,
                 track_number=next_track_number,
                 url=url,
+                identifier=identifier,
                 track_author=track_author,
                 requested_by=requested_by,
             )
@@ -374,6 +442,8 @@ class MusicRepository:
                     "track_title": t.track_title,
                     "url": t.url,
                     "track_author": t.track_author,
+                    "identifier": t.identifier,
+                    "requested_by": t.requested_by,
                 }
                 for t in sorted(
                     album.tracks, key=lambda x: getattr(x, "track_number", x.id)
@@ -463,6 +533,7 @@ class MusicRepository:
         url: str,
         track_author: str,
         requested_by: int,
+        identifier: Optional[str],
         track_number: int,
     ) -> Optional[AlbumTrack]:
         """Add track to album with specific track number"""
@@ -473,6 +544,7 @@ class MusicRepository:
                 track_title=track_title,
                 track_number=track_number,
                 url=url,
+                identifier=identifier,
                 track_author=track_author,
                 requested_by=requested_by,
             )
