@@ -325,6 +325,19 @@ function removeTrackFromQueue(position) {
 // Auto-refresh queue every 1 second
 setInterval(fetchQueueData, 1000);
 
+function updateBotOverlay(isBotConnected) {
+    const overlay = document.getElementById('bot-loading-overlay');
+    if (!overlay) return;
+
+    if (isBotConnected) {
+        // Bot connected → hide overlay
+        overlay.classList.add('hidden');
+    } else {
+        // Bot disconnected → show overlay
+        overlay.classList.remove('hidden');
+    }
+}
+
 function fetchBotStatus() {
     fetch(`${FASTAPI_URL}/api/bot/${GUILD_ID}/status`)
         .then(response => {
@@ -335,7 +348,7 @@ function fetchBotStatus() {
             const info = data.status || {};
             const track = info.current_track;
             const isConnected = info.connected;
-
+            updateBotOverlay(isConnected);
             // Toggle Connect/Disconnect buttons safely
             const disconnectBtn = document.getElementById('disconnect-btn');
             const connectBtn = document.getElementById('connect-btn');
@@ -366,7 +379,7 @@ function fetchBotStatus() {
                 albumArtBar.src = '/static/images/avatar.jpg'; // reset default
                 const subText = isConnected
                     ? '<p class="text-xs text-gray-400 truncate">Queue a song</p>'
-                    : `<p onclick="sendControlCommand('connect_bot')" class="cursor-pointer text-green-400 hover:text-green-300">Connect Bot</p>`;
+                    : `<p onclick="sendControlCommand('connect_bot')" class="cursor-pointer text-green-400 hover:text-green-300"></p>`;
 
                 trackInfo.innerHTML = `
                     <p class="text-sm font-semibold text-gray-400">No track playing</p>
@@ -494,22 +507,10 @@ function fetchUserVoiceStatus() {
 
 }
 
-// document.addEventListener('DOMContentLoaded', () => {
-//     // Open the queue automatically
-//     isQueueOpen = true;
-//     const sidebar = document.getElementById('queue-sidebar');
-//     const overlay = document.getElementById('queue-overlay');
+document.getElementById('connect-bot-btn')?.addEventListener('click', () => {
+    sendControlCommand('connect_bot');
+});
 
-//     if (sidebar && overlay) {
-//         sidebar.classList.add('open');
-//         overlay.classList.add('active');
-//         fetchQueueData(); // fetch immediately
-
-//         // Auto-refresh queue every 1 second
-//         setInterval(fetchQueueData, 1000);
-//     }
-// });
-// Initialize player on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Display guild name
     const guildNameDisplay = document.getElementById('guild-name-display');

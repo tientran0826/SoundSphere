@@ -349,7 +349,7 @@ def album_page(guild_id, album_name):
         return f"Failed to load album {album_name}", resp.status_code
 
     album_data = resp.json()
-
+    print(album_data)
     # Ensure tracks is always a list
     if "tracks" not in album_data or album_data["tracks"] is None:
         album_data["tracks"] = []
@@ -422,5 +422,4 @@ def home():
 
 
 if __name__ == "__main__":
-    # Flask chạy ở cổng 5000
-    app.run(debug=True, port=8000)
+    app.run(host="0.0.0.0", debug=True, port=8000)

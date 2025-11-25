@@ -45,7 +45,7 @@ async def get_album_tracks(guild_id: int, album_name: str):
         tracks = repo.get_album_tracks(guild_id, album_name)
         albums = repo.get_all_albums(guild_id)
         album_obj = next((a for a in albums if a.album_name == album_name), None)
-        print(album_obj)
+
         if not album_obj:
             raise HTTPException(
                 status_code=404, detail=f"Album '{album_name}' not found"
@@ -58,6 +58,7 @@ async def get_album_tracks(guild_id: int, album_name: str):
                 AlbumTrackResponse(
                     track_number=t.track_number,
                     title=t.track_title,
+                    identifier=t.identifier,
                     author=t.track_author,
                     url=t.url,
                     requested_by=t.requested_by,

@@ -359,3 +359,7 @@ body {
     border-color: #1db954; /* Accent green border on hover */
     background-color: #242424; /* Subtle dark background on hover */
 }
+
+#bot-loading-overlay {
+    transition: opacity 0.3s ease;
+}
