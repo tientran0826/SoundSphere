@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       port: 8000        # external port
       targetPort: 8000  # container Flask port
-      nodePort: 3079   # NodePort for external access
+      nodePort: 30079   # NodePort for external access
