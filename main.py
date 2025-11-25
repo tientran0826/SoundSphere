@@ -222,7 +222,7 @@ async def run_api():
     set_bot_instance(bot)
     logger.info("Bot instance set for API")
 
-    config = uvicorn.Config(app, host="0.0.0.0", port=5000, log_level="info")
+    config = uvicorn.Config(app, host="127.0.0.1", port=5000, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 
@@ -247,18 +247,13 @@ def run_flask():
 async def main():
     from concurrent.futures import ThreadPoolExecutor
 
-    asyncio.get_running_loop()
-    ThreadPoolExecutor()
-
     # Run Flask in a separate thread
-    # flask_future = loop.run_in_executor(executor, run_flask)
+    loop = asyncio.get_running_loop()
+    executor = ThreadPoolExecutor()
+    flask_future = loop.run_in_executor(executor, run_flask)
 
     # Run FastAPI and Discord bot concurrently
-    await asyncio.gather(
-        run_api(),
-        run_bot(),
-        # flask_future
-    )
+    await asyncio.gather(run_api(), run_bot(), flask_future)
 
 
 if __name__ == "__main__":
