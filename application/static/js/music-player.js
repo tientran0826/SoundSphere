@@ -254,7 +254,6 @@ function fetchQueueData() {
             }
         });
 }
-
 function renderQueue(queue) {
     const container = document.getElementById('queue-list');
     if (!container) return;
@@ -267,30 +266,56 @@ function renderQueue(queue) {
     let html = '';
     queue.forEach(track => {
         html += `
-            <div class="queue-item p-3 rounded-lg border border-gray-700 flex justify-between items-center mb-2">
-                <div class="flex items-center space-x-3 flex-1 min-w-0">
-                    <span class="text-gray-400 font-semibold text-sm w-6">${track.position}</span>
-                    <img src="https://img.youtube.com/vi/${track.identifier}/hqdefault.jpg" alt="Thumbnail" class="w-12 h-12 rounded">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-white truncate">${track.title}</p>
-                        <p class="text-xs text-gray-400 truncate">${track.author || 'Unknown'}</p>
+        <div class="group relative mb-1 flex items-center justify-between rounded-xl border border-transparent bg-white/[0.02] p-2 transition-all hover:bg-white/[0.06] hover:border-white/[0.05]">
+            <div
+                class="flex flex-1 items-center gap-4 overflow-hidden min-w-0 cursor-pointer"
+                onclick="jumpToTrack(${track.position})"
+            >
+                <span class="hidden w-6 text-center text-xs font-medium text-neutral-600 group-hover:text-neutral-400 md:block">
+                    ${track.position}
+                </span>
+
+                <div class="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-800 shadow-sm md:h-12 md:w-12">
+                    <img
+                        src="https://img.youtube.com/vi/${track.identifier}/mqdefault.jpg"
+                        alt="Thumbnail"
+                        class="h-full w-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
+                    >
+                    <div class="absolute inset-0 hidden items-center justify-center bg-black/40 backdrop-blur-[1px] group-hover:flex">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
                     </div>
                 </div>
-                <div class="flex space-x-2">
-                    <button onclick="jumpToTrack(${track.position})" class="text-green-400 hover:text-green-500 font-bold px-2 py-1 rounded transition">
-                        ▶
-                    </button>
-                    <button onclick="removeTrackFromQueue(${track.position})" class="text-red-500 hover:text-red-600 font-bold px-2 py-1 rounded transition">
-                        ✖
-                    </button>
+
+                <div class="flex flex-col justify-center min-w-0 flex-1">
+                    <h3 class="truncate text-sm font-medium text-neutral-200 group-hover:text-green-400 transition-colors">
+                        ${track.title}
+                    </h3>
+                    <p class="truncate text-xs text-neutral-500 group-hover:text-neutral-400">
+                        ${track.author || 'Unknown'}
+                    </p>
                 </div>
             </div>
+
+            <div class="flex flex-shrink-0 items-center gap-3 pr-2">
+                <button
+                    type="button"
+                    class="remove-track-btn flex items-center justify-center rounded-lg p-2 text-neutral-600 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                    onclick="removeTrackFromQueue(${track.position})"
+                    title="Remove track"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 7V4a2 2 0 012-2h0a2 2 0 012 2v3" />
+                    </svg>
+                </button>
+            </div>
+        </div>
         `;
     });
 
     container.innerHTML = html;
 }
-
 
 function jumpToTrack(position) {
     fetch(`${FASTAPI_URL}/api/queue/${GUILD_ID}/jump?index=${position}`, {
