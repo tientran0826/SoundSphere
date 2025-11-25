@@ -349,7 +349,6 @@ def album_page(guild_id, album_name):
         return f"Failed to load album {album_name}", resp.status_code
 
     album_data = resp.json()
-    print(album_data)
     # Ensure tracks is always a list
     if "tracks" not in album_data or album_data["tracks"] is None:
         album_data["tracks"] = []
