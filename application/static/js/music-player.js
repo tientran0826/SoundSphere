@@ -254,6 +254,7 @@ function fetchQueueData() {
             }
         });
 }
+
 function renderQueue(queue) {
     const container = document.getElementById('queue-list');
     if (!container) return;
@@ -609,7 +610,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const trackAuthor = button.dataset.trackAuthor;
             const requestBy = button.dataset.userId;
             const identifier = button.dataset.identifier;
-            console.log("Adding track:", trackTitle, "URI:", trackUri, "Identifier:", identifier, "trackAuthor: ", trackAuthor);
             // Prevent double clicks
             button.disabled = true;
             button.classList.add('opacity-75', 'cursor-wait');
