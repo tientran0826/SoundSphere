@@ -29,7 +29,7 @@
                                 month: 'short',
                                 day: 'numeric'
                             }));
-                        </script>
+                            </script>
                         </span>
                         <span class="hidden md:inline lg:hidden xl:inline">•</span>
                         <span>{{ album.tracks | length }} Songs</span>
@@ -48,12 +48,26 @@
                         <span class="transition-transform group-hover:scale-110">➕</span>
                         Add to Queue
                     </button>
+
+                    <button id="edit-album-btn"
+                            class="group flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 py-3.5 text-sm font-semibold text-neutral-300 backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/10 hover:text-green-400 hover:shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-70 transition-opacity group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit Album
+                    </button>
                 {% else %}
                     <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] py-3.5 text-sm font-semibold text-neutral-600">
                         ▶ Play Album
                     </button>
                     <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] py-3.5 text-sm font-semibold text-neutral-600">
                         ➕ Add to Queue
+                    </button>
+                    <button disabled class="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] py-3.5 text-sm font-semibold text-neutral-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit Album
                     </button>
                 {% endif %}
 
@@ -134,7 +148,7 @@
                         </button>
                     </div>
                 </div>
-            {% endfor %}
+                {% endfor %}
             {% else %}
                 <div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-20 text-neutral-500">
                     <p class="text-lg font-medium">No tracks yet</p>
@@ -151,6 +165,21 @@
     <button id="toast-close" class="ml-2 rounded p-1 text-neutral-500 hover:bg-white/10 hover:text-white">✕</button>
 </div>
 
+<!-- Edit Album Modal -->
+<div id="edit-album-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-[#0a0a0a] p-6 rounded-3xl w-96 border border-white/10 shadow-2xl">
+        <h3 class="text-xl font-bold text-white mb-4">Edit Album</h3>
+        <form id="edit-album-form" class="flex flex-col gap-4">
+            <input type="text" id="edit-album-name" placeholder="Album Name" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed" readonly>
+            <input type="text" id="edit-album-img-url" placeholder="Album Cover URL" class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-500/50">
+            <div class="flex justify-end gap-2">
+                <button type="button" id="cancel-edit-album-btn" class="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-gray-100 hover:bg-white/10 transition">Cancel</button>
+                <button type="submit" class="px-4 py-2 rounded-2xl bg-green-500 text-black font-bold hover:bg-green-600 transition">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -160,17 +189,14 @@
 
 <script>
     const albumName = "{{ album.album_name }}";
+    const currentAlbumImg = "{{ album.album_img_url }}";
 
-    // Toast Logic
     function showToast(message, duration = 3000) {
         const toast = document.getElementById("toast-modal");
         const toastMsg = document.getElementById("toast-message");
         toastMsg.textContent = message;
         toast.classList.remove("hidden");
         toast.classList.add("flex");
-        // Simple animation
-        toast.classList.add("animate-bounce-in");
-
         setTimeout(() => {
             toast.classList.add("hidden");
             toast.classList.remove("flex");
@@ -181,24 +207,17 @@
         document.getElementById("toast-modal").classList.remove("flex");
     });
 
-    // ==========================
-    // Album Button Handlers
-    // ==========================
-
     document.addEventListener("DOMContentLoaded", () => {
+        // Play Album
         document.querySelectorAll(".play-album-btn").forEach(btn => {
             btn.addEventListener("click", async () => {
-                // Visual feedback on click
                 const originalText = btn.innerHTML;
                 btn.innerHTML = `<span class="animate-spin">⌛</span> Loading...`;
-
                 try {
-                    console.log("Play album:", albumName);
                     const url = `${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}/play?user_id=${USER_ID}`;
                     const resp = await fetch(url, { method: "POST" });
                     if (!resp.ok) throw new Error("Failed to play album");
                     const data = await resp.json();
-                    console.log(data);
                     showToast(data.message);
                 } catch (err) {
                     console.error(err);
@@ -209,124 +228,125 @@
             });
         });
 
+        // Add Album to Queue
         document.querySelectorAll(".add-album-btn").forEach(btn => {
             btn.addEventListener("click", async () => {
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = `<span class="animate-spin">⌛</span>`;
-
-                    try {
-                        console.log("Add album to queue:", albumName);
-                        const resp = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}/add`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" }
-                        });
-                        if (!resp.ok) throw new Error("Failed to add album");
-                        const data = await resp.json();
-                        console.log(data);
-                        showToast(data.message);
-                    } catch (err) {
-                        console.error(err);
-                        showToast("Error adding album to queue");
-                    } finally {
-                        btn.innerHTML = originalText;
-                    }
-                });
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `<span class="animate-spin">⌛</span>`;
+                try {
+                    const resp = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}/add`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    if (!resp.ok) throw new Error("Failed to add album");
+                    const data = await resp.json();
+                    showToast(data.message);
+                } catch (err) {
+                    console.error(err);
+                    showToast("Error adding album to queue");
+                } finally {
+                    btn.innerHTML = originalText;
+                }
             });
-    });
-
-    function showConfirm(message) {
-        return new Promise((resolve) => {
-            const modal = document.getElementById("confirm-modal");
-            const msgEl = document.getElementById("confirm-message");
-            const cancelBtn = document.getElementById("confirm-cancel");
-            const okBtn = document.getElementById("confirm-ok");
-
-            msgEl.textContent = message;
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-
-            const cleanUp = () => {
-                modal.classList.add("hidden");
-                modal.classList.remove("flex");
-                cancelBtn.removeEventListener("click", onCancel);
-                okBtn.removeEventListener("click", onOk);
-            };
-
-            const onCancel = () => {
-                cleanUp();
-                resolve(false);
-            };
-
-            const onOk = () => {
-                cleanUp();
-                resolve(true);
-            };
-
-            cancelBtn.addEventListener("click", onCancel);
-            okBtn.addEventListener("click", onOk);
         });
-    }
 
-    // Updated Remove Listener to match new classes
-    document.querySelectorAll('.remove-track-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            // Add visual feedback immediately for better UX
-            const row = btn.closest('.group');
-            row.style.opacity = '0.5';
-            row.style.pointerEvents = 'none';
-
-            const guildId = btn.dataset.guildId;
-            const albumName = encodeURIComponent(btn.dataset.albumName);
-            const trackNumber = btn.dataset.trackNumber;
-
-            console.log(`Removing track ${trackNumber} from album ${albumName} in guild ${guildId}`);
-
+        // Delete Album
+        document.getElementById("delete-album-btn").addEventListener("click", async () => {
+            const confirmed = await showConfirm(`Are you sure you want to delete "${albumName}"?`);
+            if (!confirmed) return;
             try {
-                const resp = await fetch(`${FASTAPI_URL}/api/albums/${guildId}/${albumName}/tracks/${trackNumber}`, {
-                    method: 'DELETE'
-                });
-                console.log(resp);
-
-                if (!resp.ok) throw new Error('Failed to remove track');
+                const resp = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}`, { method: "DELETE" });
+                if (!resp.ok) throw new Error("Failed to delete album");
                 const data = await resp.json();
-                showToast(data.message);
-
-                // Smooth remove
-                row.style.transition = 'all 0.3s ease';
-                row.style.height = '0';
-                row.style.padding = '0';
-                row.style.opacity = '0';
-                setTimeout(() => row.remove(), 300);
-
+                showToast(data.message || "Album deleted successfully");
+                setTimeout(() => window.location.href = "/", 1000);
             } catch (err) {
                 console.error(err);
-                row.style.opacity = '1';
-                row.style.pointerEvents = 'auto';
-                showToast('Error removing track');
+                showToast("Error deleting album", 4000);
+            }
+        });
+
+        document.querySelectorAll('.remove-track-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+
+                // Add visual feedback immediately for better UX
+                const row = btn.closest('.group');
+                row.style.opacity = '0.5';
+
+                const guildId = btn.dataset.guildId;
+                const albumName = encodeURIComponent(btn.dataset.albumName);
+                const trackNumber = btn.dataset.trackNumber; // Ensure this is passed in Jinja loop
+
+                console.log(`Removing track ${trackNumber} from album ${albumName} in guild ${guildId}`);
+
+                try {
+                    const resp = await fetch(
+                        `${FASTAPI_URL}/api/albums/${guildId}/${albumName}/tracks/${trackNumber}`,
+                        { method: 'DELETE' }
+                    );
+
+                    console.log(resp);
+
+                    if (!resp.ok) throw new Error('Failed to remove track');
+
+                    const data = await resp.json();
+                    showToast(data.message);
+
+                    // Remove from DOM
+                    row.remove();
+                } catch (err) {
+                    console.error(err);
+                    row.style.opacity = '1'; // Revert if failed
+                    showToast('Error removing track');
+                }
+            });
+        });        // Edit Album
+        const editBtn = document.getElementById("edit-album-btn");
+        const modal = document.getElementById("edit-album-modal");
+        const cancelBtn = document.getElementById("cancel-edit-album-btn");
+        const form = document.getElementById("edit-album-form");
+        const albumNameInput = document.getElementById("edit-album-name");
+        const albumImgInput = document.getElementById("edit-album-img-url");
+
+        editBtn.addEventListener("click", () => {
+            albumNameInput.value = "{{ album.album_name }}";
+            albumImgInput.value = "{{ album.album_img_url }}";
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        });
+
+        cancelBtn.addEventListener("click", () => {
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        });
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const updatedName = albumNameInput.value.trim();
+            const updatedImg = albumImgInput.value.trim();
+            try {
+                const resp = await fetch(`${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        album_name: updatedName,
+                        album_img_url: updatedImg
+                    })
+                });
+                if (!resp.ok) throw new Error("Failed to update album");
+                const data = await resp.json();
+                showToast(data.message || "Album updated successfully");
+                setTimeout(() => location.reload(), 800);
+            } catch (err) {
+                console.error(err);
+                showToast("Error updating album", 4000);
+            } finally {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
             }
         });
     });
 
-    document.getElementById("delete-album-btn").addEventListener("click", async () => {
-        const confirmed = await showConfirm(`Are you sure you want to delete "${albumName}"?`);
-        if (!confirmed) return;
-        try {
-            const url = `${FASTAPI_URL}/api/albums/${GUILD_ID}/${encodeURIComponent(albumName)}`;
-            const resp = await fetch(url, { method: "DELETE" });
-
-            if (!resp.ok) throw new Error("Failed to delete album");
-
-            const data = await resp.json();
-
-            showToast(data.message || "Album deleted successfully");
-            setTimeout(() => {
-                window.location.href = "/";
-            }, 1000);
-        } catch (err) {
-            console.error(err);
-            showToast("Error deleting album", 4000);
-        }
-    });
 </script>
 {% endblock %}

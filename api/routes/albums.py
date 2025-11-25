@@ -39,6 +39,30 @@ async def get_albums(guild_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/{guild_id}/{album_name}", response_model=SuccessResponse)
+async def update_album_info(guild_id: int, album_name: str, album: AlbumCreate):
+    """Update album information"""
+    try:
+        repo = get_repo()
+        success = repo.update_album_info(
+            guild_id,
+            album_name=album.album_name,
+            album_img_url=album.album_img_url,
+        )
+
+        if success:
+            return SuccessResponse(
+                success=True, message=f'Album "{album_name}" updated'
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Album not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating album info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{guild_id}/{album_name}", response_model=AlbumTracksResponse)
 async def get_album_tracks(guild_id: int, album_name: str):
     """Get tracks from specific album"""

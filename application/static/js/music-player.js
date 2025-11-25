@@ -625,8 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             })
                         }).then(response => response.json())
                         .then(data => {
-                            console.log("Track started:", data);
-                            // Now render the queue after the track starts
+                            showToast(`Playing Now: ${trackTitle}`);
                             renderQueue();
                         })
                         .catch(err => {
@@ -657,7 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             return response.json();
                         })
                         .then(() => {
-                            showConfirmPopup(trackTitle);
+                            showToast(`Added to Queue: ${trackTitle}`);
                         });
                 })
                 .catch(error => {
@@ -783,4 +782,17 @@ function updateSeekPreview(e) {
 
     const percent = (x / rect.width) * 100;
     progressFill.style.width = `${percent}%`;
+}
+
+
+function showToast(message, duration = 3000) {
+    const toast = document.getElementById("toast-modal");
+    const toastMsg = document.getElementById("toast-message");
+    toastMsg.textContent = message;
+    toast.classList.remove("hidden");
+    toast.classList.add("flex");
+    setTimeout(() => {
+        toast.classList.add("hidden");
+        toast.classList.remove("flex");
+    }, duration);
 }

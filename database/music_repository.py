@@ -345,6 +345,29 @@ class MusicRepository:
         finally:
             session.close()
 
+    def update_album_info(
+        self, guild_id: int, album_name: str, album_img_url: str
+    ) -> bool:
+        """Update album image URL"""
+        session = self.Session()
+        try:
+            album = (
+                session.query(Album)
+                .filter_by(guild_id=guild_id, album_name=album_name)
+                .first()
+            )
+            if album:
+                album.album_img_url = album_img_url
+                session.commit()
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error updating album image: {e}")
+            session.rollback()
+            return False
+        finally:
+            session.close()
+
     def get_album_tracks(self, guild_id: int, album_name: str) -> List[AlbumTrack]:
         """Get all tracks from specific album"""
         session = self.Session()
