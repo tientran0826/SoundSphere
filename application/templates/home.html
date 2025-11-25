@@ -1,113 +1,165 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="bg-[#1e1e1e] text-gray-100 min-h-screen p-4 md:p-10 lg:p-12">
+<div class="relative bg-[#0a0a0a] text-gray-100 font-sans selection:bg-green-500/30 selection:text-green-200 overflow-hidden **pb-32 md:pb-24**">
 
-    <div id="voice-users-container" class="sticky top-0 z-10 mb-8 p-4 rounded-xl bg-gray-800/80 backdrop-blur-sm shadow-2xl border border-gray-700/50">
-        <h3 class="text-xl font-extrabold text-gray-100 mb-3 flex items-center space-x-2">
-            <svg class="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-4a2 2 0 11-4 0 2 2 0 014 0zm-2 10a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"></path></svg>
-            <span>Listening Now</span>
-        </h3>
-        <div id="voice-users-list" class="flex gap-4 flex-wrap text-sm text-gray-400">
-            <p class="italic">No one is speaking right now...</p>
-        </div>
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+         <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-green-600/10 blur-[120px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-600/10 blur-[120px]"></div>
     </div>
 
-    <h2 class="text-4xl font-extrabold text-gray-100 mb-8 border-l-4 pl-4 border-green-400">
-        Trending
-    </h2>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-
-        {% for region_name, video_list in trending_data.items() %}
-
-            <div class="flex flex-col space-y-4 bg-[#282828] p-5 rounded-xl shadow-2xl transition duration-500 hover:shadow-green-900/40">
-                <h3 class="text-2xl font-bold text-gray-100 mb-2 text-center pb-2 tracking-wide text-green-400">
-                    {{ region_name }}
+    <div class="relative z-6 p-6 md:p-12 lg:p-16 max-w-[1920px] mx-auto">
+        <div id="voice-users-container" class="sticky top-6 z-50 mb-12 p-4 rounded-2xl bg-gray-900/60 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all duration-300 hover:border-green-500/30">
+            <div class="flex items-center space-x-3">
+                <span class="relative flex h-3 w-3">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+                <h3 class="text-lg font-bold text-white tracking-wide">
+                    Listening Now
                 </h3>
+            </div>
+            <div id="voice-users-list" class="flex gap-3 flex-wrap text-sm text-gray-400 font-medium">
+                <p class="italic opacity-60">No one is speaking right now...</p>
+            </div>
+        </div>
 
-                {% for video in video_list %}
+        <div class="flex items-center gap-4 mb-10">
+            <div class="h-10 w-1.5 rounded-full bg-gradient-to-b from-green-400 to-emerald-600"></div>
+            <h2 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tight">
+                Trending
+            </h2>
+        </div>
 
-                    {% if loop.index == 1 %}
-                        {# TOP VIDEO (Rank 1): Prominent Card #}
-                    <button
-                        type="button"
-                        class="add-track-btn w-full p-0 rounded-lg flex flex-col transition duration-300 transform group relative"
-                        data-track-title="{{ video.title }}"
-                        data-track-author="{{ video.genre }}"
-                        data-guild-id="{{ guild_id }}"
-                        data-user-id="{{ user_id }}"
-                        data-track-uri="{{ video.url }}"
-                        data-identifier="{{ video.video_id }}"
-                    >
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
 
-                        <div class="w-full aspect-video overflow-hidden rounded-xl shadow-xl relative mb-3">
-                            <img src="{{ video.thumbnail }}" alt="{{ video.title }}" class="object-cover w-full h-full transition duration-500 group-hover:scale-105 group-focus:scale-105">
-                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/30">
-                                <svg class="w-16 h-16 text-green-400/90 hover:text-green-300" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
-                            </div>
-                            <span class="absolute top-3 left-3 text-4xl font-extrabold text-gray-100 bg-black/50 rounded-lg px-2 py-1">#1</span>
-                        </div>
-                        <div class="pl-2 pr-2">
-                            <p class="text-xl font-extrabold text-gray-100 truncate w-full group-hover:text-green-400">{{ video.title }}</p>
-                            <p class="text-sm text-gray-400 mt-1">Views: {{ video.view_count }}</p>
-                        </div>
-                    </button>
-                    {% else %}
-                        {# SMALLER VIDEOS (Rank 2-5): Compact list item style #}
-                        <button
-                            type="button"
-                            class="add-track-btn w-full p-2 rounded-lg flex items-center space-x-3 transition duration-300 bg-[#282828] hover:bg-[#343434] cursor-pointer text-left group"
-                            data-track-title="{{ video.title }}"
-                            data-track-author="{{ video.genre }}"
-                            data-guild-id="{{ guild_id }}"          
-                            data-user-id="{{ user_id }}"    
-                            data-track-uri="{{ video.url }}"        
-                            data-identifier="{{ video.video_id }}"
-                        >
-                            <span class="text-lg font-bold text-gray-400 w-6 flex-shrink-0 text-center">#{{ loop.index }}</span>
-                            <div class="w-12 h-12 overflow-hidden rounded-md flex-shrink-0 shadow-lg">
-                                <img src="{{ video.thumbnail }}" alt="{{ video.title }}" class="object-cover w-full h-full">
-                            </div>
-                            <div class="flex-grow min-w-0">
-                                <p class="text-base font-semibold text-gray-100 truncate group-hover:text-green-400">{{ video.title }}</p>
-                                <p class="text-xs text-gray-500 truncate">Views: {{ video.view_count }}</p>
-                            </div>
-                        </button>
-                    {% endif %}
+            {% for region_name, video_list in trending_data.items() %}
 
-                {% endfor %}
+                <div class="flex flex-col bg-white/5 border border-white/5 p-5 rounded-3xl backdrop-blur-sm hover:bg-white/[0.07] transition duration-500 group/panel">
+
+                    <h3 class="text-xl font-bold text-gray-200 mb-5 flex items-center gap-2">
+                        <span class="text-green-400">#</span> {{ region_name }}
+                    </h3>
+
+                    <div class="flex flex-col space-y-3">
+                        {% for video in video_list %}
+
+                            {% if loop.index == 1 %}
+                                {# TOP VIDEO (Rank 1): Cinematic Card #}
+                                <button
+                                    type="button"
+                                    class="add-track-btn w-full text-left relative group mb-4"
+                                    data-track-title="{{ video.title }}"
+                                    data-track-author="{{ video.genre }}"
+                                    data-guild-id="{{ guild_id }}"
+                                    data-user-id="{{ user_id }}"
+                                    data-track-uri="{{ video.url }}"
+                                    data-identifier="{{ video.video_id }}"
+                                >
+                                    <div class="relative w-full aspect-video rounded-2xl overflow-hidden shadow-lg shadow-black/40">
+                                        <img src="{{ video.thumbnail }}" alt="{{ video.title }}" class="object-cover w-full h-full transition duration-700 transform group-hover:scale-110 group-focus:scale-110">
+
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-60 transition duration-300"></div>
+
+                                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 backdrop-blur-[2px]">
+                                            <div class="bg-green-500 text-black rounded-full p-3 shadow-lg shadow-green-500/40 transform scale-75 group-hover:scale-100 transition duration-300">
+                                                <svg class="w-6 h-6 translate-x-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                                            </div>
+                                        </div>
+
+                                        <span class="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 text-green-400 font-black text-lg px-3 py-1 rounded-lg shadow-lg">
+                                            1
+                                        </span>
+                                    </div>
+
+                                    <div class="mt-3 px-1">
+                                        <p class="text-lg font-bold text-white leading-tight line-clamp-2 group-hover:text-green-400 transition-colors">{{ video.title }}</p>
+                                        <p class="text-xs font-medium text-gray-500 mt-1.5 flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            {{ video.view_count }}
+                                        </p>
+                                    </div>
+                                </button>
+                            {% else %}
+                                {# SMALLER VIDEOS (Rank 2-5): Clean Rows #}
+                                <button
+                                    type="button"
+                                    class="add-track-btn w-full p-2 rounded-xl flex items-center space-x-3 transition duration-200 hover:bg-white/10 text-left group relative border border-transparent hover:border-white/5"
+                                    data-track-title="{{ video.title }}"
+                                    data-track-author="{{ video.genre }}"
+                                    data-guild-id="{{ guild_id }}"
+                                    data-user-id="{{ user_id }}"
+                                    data-track-uri="{{ video.url }}"
+                                    data-identifier="{{ video.video_id }}"
+                                >
+                                    <span class="text-lg font-bold text-gray-600 w-6 flex-shrink-0 text-center group-hover:text-green-400 transition-colors">{{ loop.index }}</span>
+
+                                    <div class="w-12 h-12 overflow-hidden rounded-lg flex-shrink-0 shadow-md relative">
+                                        <img src="{{ video.thumbnail }}" alt="{{ video.title }}" class="object-cover w-full h-full group-hover:scale-110 transition duration-300">
+                                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors"></div>
+                                    </div>
+
+                                    <div class="flex-grow min-w-0">
+                                        <p class="text-sm font-semibold text-gray-200 truncate group-hover:text-white transition-colors">{{ video.title }}</p>
+                                        <p class="text-[10px] text-gray-500 truncate mt-0.5">Views: {{ video.view_count }}</p>
+                                    </div>
+                                </button>
+                            {% endif %}
+
+                        {% endfor %}
+                    </div>
+                </div>
+
+            {% endfor %}
+        </div>
+
+        <div class="my-20 border-t border-white/10 relative">
+            <div class="absolute left-1/2 -translate-x-1/2 -top-3 bg-[#0a0a0a] px-4 text-gray-500 text-sm tracking-widest uppercase font-semibold">
+                Library
+            </div>
+        </div>
+
+        <div id="featured-albums-container">
+            <div class="flex items-center gap-4 mb-10">
+                 <div class="h-10 w-1.5 rounded-full bg-gradient-to-b from-purple-400 to-blue-600"></div>
+                <h2 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 tracking-tight">
+                    Server Essentials
+                </h2>
             </div>
 
-        {% endfor %}
-    </div>
+            <div id="album-list-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
 
-    <hr class="my-16 border-gray-700/50"/>
+                <button type="button" class="album-card w-full p-4 rounded-3xl flex flex-col items-start transition duration-300 bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:-translate-y-2 cursor-pointer text-left group relative" onclick="playAlbum('server_album_1')">
+                    <div class="w-full aspect-square overflow-hidden rounded-2xl mb-4 shadow-lg shadow-black/50 relative">
+                        <img src="https://placehold.co/400x400/10b981/ffffff?text=Guild+Mix" alt="Server Album Placeholder" class="object-cover w-full h-full transition duration-500 group-hover:scale-105 group-hover:rotate-2">
+                        <div class="absolute right-3 bottom-3 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition duration-300 ease-out shadow-lg shadow-black/50 rounded-full">
+                            <div class="bg-green-500 text-black p-3 rounded-full hover:scale-110 transition">
+                                <svg class="w-5 h-5 fill-current pl-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full">
+                        <p class="text-base font-bold text-gray-100 truncate group-hover:text-green-400 transition-colors">The Guild Mix</p>
+                        <p class="text-xs text-gray-400 truncate mt-1">Curated by <span class="text-gray-300 font-medium">{{ GUILD_NAME }}</span></p>
+                    </div>
+                </button>
 
-    <div id="featured-albums-container">
-        <h2 class="text-3xl font-extrabold text-gray-100 mb-8 border-l-4 pl-4 border-green-400">
-            💿 Server Playlists & Essentials
-        </h2>
+                <button type="button" class="album-card w-full p-4 rounded-3xl flex flex-col items-start transition duration-300 bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:-translate-y-2 cursor-pointer text-left group relative" onclick="playAlbum('featured_playlist_id')">
+                    <div class="w-full aspect-square overflow-hidden rounded-2xl mb-4 shadow-lg shadow-black/50 relative">
+                        <img src="https://placehold.co/400x400/6366f1/ffffff?text=Chill+Beats" alt="Chill Beats Playlist" class="object-cover w-full h-full transition duration-500 group-hover:scale-105 group-hover:rotate-2">
+                         <div class="absolute right-3 bottom-3 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition duration-300 ease-out shadow-lg shadow-black/50 rounded-full">
+                            <div class="bg-green-500 text-black p-3 rounded-full hover:scale-110 transition">
+                                <svg class="w-5 h-5 fill-current pl-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full">
+                        <p class="text-base font-bold text-gray-100 truncate group-hover:text-green-400 transition-colors">Chill Background</p>
+                        <p class="text-xs text-gray-400 truncate mt-1">Bot Recommended</p>
+                    </div>
+                </button>
 
-        <div id="album-list-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-            <button type="button" class="album-card w-full p-4 rounded-xl flex flex-col items-start transition duration-300 bg-[#282828] hover:bg-[#343434] cursor-pointer text-left group shadow-xl hover:shadow-green-900/40 relative" onclick="playAlbum('server_album_1')">
-                <div class="w-full aspect-square overflow-hidden rounded-xl mb-3 shadow-2xl relative">
-                    <img src="https://placehold.co/200x200/1db954/ffffff?text=Server+Mix" alt="Server Album Placeholder" class="object-cover w-full h-full transition duration-500 group-hover:scale-105">
-                </div>
-                <div class="flex-grow w-full">
-                    <p class="text-lg font-bold text-gray-100 truncate group-hover:text-green-400">The Guild Mix</p>
-                    <p class="text-sm text-gray-400 truncate mt-1">Curated by <span class="text-green-500 font-semibold">{{ GUILD_NAME }}</span></p>
-                </div>
-            </button>
-            <button type="button" class="album-card w-full p-4 rounded-xl flex flex-col items-start transition duration-300 bg-[#282828] hover:bg-[#343434] cursor-pointer text-left group shadow-xl hover:shadow-green-900/40 relative" onclick="playAlbum('featured_playlist_id')">
-                <div class="w-full aspect-square overflow-hidden rounded-xl mb-3 shadow-2xl relative">
-                    <img src="https://placehold.co/200x200/7a7a7a/ffffff?text=Chill+Beats" alt="Chill Beats Playlist" class="object-cover w-full h-full transition duration-500 group-hover:scale-105">
-                </div>
-                <div class="flex-grow w-full">
-                    <p class="text-lg font-bold text-gray-100 truncate group-hover:text-green-400">Chill Background</p>
-                    <p class="text-sm text-gray-400 truncate mt-1">Bot Recommended</p>
-                </div>
-            </button>
+            </div>
         </div>
     </div>
 </div>
