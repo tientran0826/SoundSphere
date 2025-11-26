@@ -39,7 +39,7 @@ def callback():
     if not code:
         return redirect(url_for("index"))
 
-    token_url = f"{configs.FASTAPI_BASE_URL}/oauth2/token"
+    token_url = f"https://discord.com/oauth2/token"
     data = {
         "client_id": configs.DISCORD_CLIENT_ID,
         "client_secret": configs.DISCORD_CLIENT_SECRET,
