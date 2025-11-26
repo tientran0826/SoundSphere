@@ -1,24 +1,27 @@
+import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
 from dotenv import load_dotenv
+from sqlalchemy import engine_from_config, pool
+
 from alembic import context
-import os
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 load_dotenv()
 
-DB_USER = os.environ.get("DB_USER", "music_admin")
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "123")
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_PORT = os.environ.get("DB_PORT", "5432")
-DB_NAME = os.environ.get("DB_NAME", "music_db")
-config.set_main_option(
-    "sqlalchemy.url",
+DB_USER = os.environ.get("POSTGRES_USER", "music_admin")
+DB_PASSWORD = os.environ.get("POSTGRES_PASSWORD", "123")
+DB_HOST = os.environ.get("POSTGRES_HOST", "192.168.100.150")
+DB_PORT = os.environ.get("POSTGRES_PORT", "30008")
+DB_NAME = os.environ.get("POSTGRES_DB", "music_db")
+DATABASE_URL = (
     f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
+print(f"[DEBUG] Connecting to database: {DATABASE_URL}")
+# Set the URL for Alembic
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -30,6 +33,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from database.models import Base  # import your Base model
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -76,9 +80,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

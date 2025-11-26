@@ -38,6 +38,7 @@
         if (!FASTAPI_URL.startsWith("http")) {
             throw new Error("FASTAPI_URL must include http:// or https://");
         }
+        console.log("FASTAPI_URL set to:", FASTAPI_URL);
         const USER_ID = "{{ user_id }}";
     </script>
 
