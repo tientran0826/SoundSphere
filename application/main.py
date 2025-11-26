@@ -24,7 +24,7 @@ def index():
 @app.route("/login")
 def login():
     discord_auth_url = (
-        f"https://discord.com/oauth2/authorize"
+        f"{configs.DISCORD_API_BASE_URL}/oauth2/authorize"
         f"?client_id={configs.DISCORD_CLIENT_ID}"
         f"&redirect_uri={configs.DISCORD_REDIRECT_URI}"
         f"&response_type=code"
@@ -39,7 +39,7 @@ def callback():
     if not code:
         return redirect(url_for("index"))
 
-    token_url = f"https://discord.com/oauth2/token"
+    token_url = f"{configs.DISCORD_API_BASE_URL}/oauth2/token"
     data = {
         "client_id": configs.DISCORD_CLIENT_ID,
         "client_secret": configs.DISCORD_CLIENT_SECRET,
@@ -58,7 +58,7 @@ def callback():
     access_token = token_info.get("access_token")
     if not access_token:
         return "Token is not exist.", 400
-    user_url = f"{configs.FASTAPI_BASE_URL}/users/@me"
+    user_url = f"{configs.DISCORD_API_BASE_URL}/users/@me"
     auth_headers = {"Authorization": f"Bearer {access_token}"}
     user_response = requests.get(user_url, headers=auth_headers)
     if user_response.status_code != 200:
@@ -82,7 +82,7 @@ def logout():
 
 
 def get_user_guilds(access_token):
-    user_guilds_url = f"{configs.FASTAPI_BASE_URL}/users/@me/guilds"
+    user_guilds_url = f"{configs.DISCORD_API_BASE_URL}/users/@me/guilds"
     auth_headers = {"Authorization": f"Bearer {access_token}"}
     try:
         response = requests.get(user_guilds_url, headers=auth_headers)
