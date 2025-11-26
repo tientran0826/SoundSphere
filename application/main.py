@@ -24,7 +24,7 @@ def index():
 @app.route("/login")
 def login():
     discord_auth_url = (
-        f"{configs.FASTAPI_BASE_URL}/oauth2/authorize"
+        f"https://discord.com/oauth2/authorize"
         f"?client_id={configs.DISCORD_CLIENT_ID}"
         f"&redirect_uri={configs.DISCORD_REDIRECT_URI}"
         f"&response_type=code"
