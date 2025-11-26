@@ -6,8 +6,10 @@ metadata:
 spec:
   selector:
     app: soundsphere-bot
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
   type: NodePort
+  ports:
+    - name: fastapi
+      protocol: TCP
+      port: 5000        # external port
+      targetPort: 5000  # container Flask port
+      nodePort: 30078    # NodePort for external access

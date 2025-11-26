@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="{{ url_for('static', filename='images/avatar.jpg') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundSphere - Music Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-green': '#1db954',
+                        'dark-bg': '#121212',
+                        'card-bg': '#181818',
+                        'dark-hover': '#282828',
+                        'spotify-light-green': '#1ed760'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    {% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+    {% endblock %}
+</head>
+<body class="bg-dark-bg text-white font-inter">
+
+    <script>
+        const GUILD_ID = "{{ guild_id }}";
+        const GUILD_NAME = "{{ guild_name | safe }}";
+        const FASTAPI_URL = "{{ FASTAPI_BASE_URL }}";
+        if (!FASTAPI_URL.startsWith("http")) {
+            throw new Error("FASTAPI_URL must include http:// or https://");
+        }
+        console.log("FASTAPI_URL set to:", FASTAPI_URL);
+        const USER_ID = "{{ user_id }}";
+    </script>
+
+    {% block body_content %}
+
+    <!--
+      NEW: Disconnected Overlay
+      Toggle the 'hidden' class on this div via JS when the bot connects/disconnects.
+    -->
+    <div id="disconnected-overlay" class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center hidden transition-opacity duration-300">
+        <div class="text-center p-8 max-w-lg mx-4 animate-in fade-in zoom-in duration-300">
+            <!-- Icon -->
+            <div class="relative w-24 h-24 mx-auto mb-8 group">
+                 <div class="absolute inset-0 bg-red-500/20 rounded-full animate-ping"></div>
+                 <div class="relative w-full h-full bg-[#181818] rounded-full border border-red-500/30 flex items-center justify-center shadow-2xl group-hover:border-red-500/50 transition-colors">
+                    <svg class="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+                    </svg>
+                 </div>
+            </div>
+
+            <h2 class="text-4xl font-black text-white mb-4 tracking-tight">Bot Disconnected</h2>
+
+            <p class="text-gray-400 text-lg mb-10 font-medium leading-relaxed">
+                Waiting for bot to connect to voice.<br>
+                <span class="text-sm opacity-60">Join a voice channel and click below.</span>
+            </p>
+
+            <button onclick="sendControlCommand('connect_bot')"
+                    class="group relative inline-flex items-center justify-center gap-3 px-10 py-4 bg-green-500 hover:bg-green-400 text-black font-bold text-lg rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(34,197,94,0.3)] hover:shadow-[0_0_40px_rgba(34,197,94,0.5)]">
+                <svg class="w-6 h-6 transition-transform group-hover:-rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Click here to connect
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Box -->
+    <div id="message-box" class="fixed top-4 right-4 left-4 md:top-5 md:right-5 md:left-auto hidden z-50">
+        <div class="bg-card-bg p-4 md:p-6 rounded-2xl shadow-2xl w-full md:w-80 border border-gray-700">
+            <h4 id="message-box-title" class="text-base md:text-lg font-bold text-white mb-2">Notification</h4>
+            <p id="message-box-content" class="text-gray-400 text-xs md:text-sm mb-3 md:mb-4"></p>
+            <div id="message-box-actions" class="flex justify-end space-x-2 md:space-x-3"></div>
+        </div>
+    </div>
+
+    <!-- Top Bar -->
+    <div class="top-status-bar flex flex-col md:flex-row justify-between items-start md:items-center px-4 md:px-6 py-2 md:py-3 border-b border-gray-800 space-y-2 md:space-y-0">
+        <div class="flex items-center space-x-2 md:space-x-4 w-full md:w-auto overflow-x-auto">
+            <a href="{{ url_for('home') }}" class="flex items-center text-gray-400 hover:text-white transition flex-shrink-0">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                <span class="text-xs font-semibold uppercase">BACK</span>
+            </a>
+            <span class="text-gray-600">|</span>
+            <span id="guild-name-display"
+                class="font-semibold text-sm truncate cursor-pointer"
+                onclick="window.location='{{ url_for('dashboard') }}'">
+                {{ guild_name | safe }}
+            </span>
+            <div id="status-user-voice-badge" class="ml-2 md:ml-4 text-xs text-gray-400 flex-shrink-0">...loading...</div>
+        </div>
+
+        <!-- Search bar -->
+        <div class="relative w-full md:w-1/3 lg:w-1/4">
+            <input
+                type="text"
+                id="search-input"
+                placeholder="Search for a song or URL"
+                class="w-full rounded-full pl-10 pr-4 py-2 text-sm bg-dark-hover text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-green"
+            >
+            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Queue Overlay for Mobile -->
+    <div id="queue-overlay" class="queue-overlay fixed inset-0 bg-black/60 z-40" onclick="toggleQueue()"></div>
+
+    <!-- Main Layout -->
+    <div class="flex min-h-screen bg-dark-bg pb-32 md:pb-24">
+        <!-- Sidebar / Queue -->
+       <div id="queue-sidebar" class="bg-card-bg p-4 md:p-100 border-r border-gray-800 transition-transform duration-300 z-50 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 md:mb-6">
+                <h3 class="text-lg md:text-xl font-bold border-l-4 border-primary-green pl-3"></h3>
+                <button onclick="toggleQueue()" class="text-gray-400 hover:text-white p-2 md:block">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flex space-x-2 mb-4 mt-11">
+                <button onclick="showConfirmation('Are you sure you want to clear the entire playlist?', 'Clear Queue', clearQueueAction())"
+                        class="flex-1 bg-red-600 hover:bg-red-700 rounded-full py-2 text-xs font-bold transition">
+                    Clear
+                </button>
+                <button onclick="shuffleQueue()"
+                        class="flex-1 bg-primary-green hover:bg-spotify-light-green rounded-full py-2 text-xs font-bold transition text-black">
+                    Shuffle
+                </button>
+            </div>
+
+            <div id="queue-list" class="flex flex-col space-y-2 overflow-y-auto h-full **pb-4**">
+                <p class="text-gray-500 text-center py-8 text-sm">Queue is empty. Use the search bar to add tracks.</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-4 md:p-6 overflow-y-auto">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
+
+    <!-- Bottom Player -->
+    <div class="fixed bottom-0 left-0 right-0 bg-card-bg border-t border-gray-800 px-3 md:px-6 py-2 md:py-3">
+        <div class="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
+            <!-- Track Info -->
+            <div class="flex items-center space-x-3 md:space-x-4 w-full md:w-1/4">
+                <img
+                    id="album-art-bar"
+                    src="/static/images/avatar.jpg"
+                    alt="Album Art"
+                    class="player-bar-album-art w-10 h-10 md:w-14 md:h-14 rounded flex-shrink-0"
+                >
+                <div id="track-info-bar" class="min-w-0 flex-1">
+                    <p class="text-xs md:text-sm font-semibold truncate">No Track Playing</p>
+                    <!-- "Connect Bot" button removed from here as requested -->
+                </div>
+            </div>
+
+            <!-- Playback Controls -->
+            <div class="flex flex-col items-center justify-center w-full md:w-1/2">
+                <div class="flex items-center justify-center space-x-4 md:space-x-6 mb-2">
+                    <button id="shuffle-btn" onclick="sendControlCommand('shuffle')" class="control-btn hidden sm:block text-gray-400 hover:text-primary-green" disabled title="Shuffle">
+                        <svg class="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17zm13.3-1.83c.77-2.31-1.34-4.22-3.23-3.41L12.4 6.77l1.77 1.77 5.17-5.17.7.7-5.17 5.17 1.77 1.77 2.34-1.57zM12.4 17.23L4 8.83l-1.41 1.41 8.4 8.4 1.41-1.41z"/></svg>
+                    </button>
+
+                    <button id="prev-btn" onclick="sendControlCommand('prev')" class="control-btn" disabled title="Previous Track">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    </button>
+                    <button id="play-pause-btn" onclick="togglePlayPause()" class="control-btn primary" disabled title="Play/Pause">
+                        <svg id="play-icon" class="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="pause-icon" class="w-5 h-5 md:w-6 md:h-6 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                    </button>
+                    <button id="skip-btn" onclick="sendControlCommand('skip')" class="control-btn" disabled title="Skip Track">
+                        <svg class="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                    </button>
+
+                    <button id="repeat-btn" onclick="sendControlCommand('repeat')" class="control-btn hidden sm:block text-gray-400 hover:text-primary-green" disabled title="Repeat">
+                        <svg class="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v3z"/></svg>
+                    </button>
+
+                    <button onclick="toggleQueue()" class="control-btn text-gray-400 hover:text-primary-green md:hidden" title="Toggle Queue">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="flex items-center w-full max-w-md space-x-2">
+                    <span id="current-time" class="text-xs text-gray-400">0:00</span>
+                    <div class="progress-bar-container flex-1 h-1 bg-gray-700 rounded cursor-pointer" onclick="seek(event)">
+                        <div id="progress-bar-fill" class="h-1 bg-primary-green rounded" style="width: 0%;"></div>
+                    </div>
+                    <span id="total-time" class="text-xs text-gray-400">0:00</span>
+                </div>
+            </div>
+            <!-- Right Controls: Volume + Queue Toggle -->
+            <div class="hidden md:flex items-center justify-end w-1/4 space-x-4">
+                <!-- Volume -->
+                <div class="flex items-center space-x-2 w-32">
+                    <svg class="w-5 h-5 text-gray-400 hover:text-white cursor-pointer" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 3.23v2.06c2.89.84 5 3.54 5 6.71s-2.11 5.87-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zM16.5 12c0-2.33-1.6-4.31-4-4.8v9.6C14.9 16.31 16.5 14.33 16.5 12zm-8.45-6.85L5.75 8H3c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h2.75l2.3 2.85C9.37 18.77 11 17.52 11 16V8c0-1.52-1.63-2.77-3.45-2.85z"/>
+                    </svg>
+                    <div id="volume-bar-container" class="flex-1 h-1 bg-gray-700 rounded cursor-pointer relative">
+                        <div id="volume-bar-fill" class="h-1 bg-primary-green rounded" style="width: 50%;"></div>
+                    </div>
+                </div>
+
+                <!-- Queue Toggle -->
+                <button onclick="toggleQueue()" class="text-gray-400 hover:text-white p-2 flex-shrink-0" title="Toggle Queue">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/>
+                    </svg>
+                </button>
+
+            </div>
+        </div>
+    </div>
+
+
+    <div id="confirm-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-50">
+        <div class="bg-card-bg rounded-xl shadow-2xl w-96 max-w-sm p-6 text-center transform scale-90 transition-all duration-300 mx-4 border border-gray-700">
+            <h2 class="text-xl font-bold mb-3 text-white">Track Added 🎶</h2>
+            <p id="confirm-message" class="text-gray-400 mb-6">
+                The track was added to queue.
+            </p>
+            <button id="confirm-ok-btn" class="bg-primary-green text-black px-6 py-2.5 rounded-full hover:bg-[#1ed760] transition font-bold shadow-md w-full">
+                OK
+            </button>
+        </div>
+    </div>
+    <div id="bot-loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex flex-col items-center justify-center z-50 hidden">
+        <div class="text-white text-lg font-semibold animate-pulse mb-4">
+            Waiting for bot to connect...
+        </div>
+        <button id="connect-bot-btn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+            Connect Bot
+        </button>
+    </div>
+    <div id="toast-modal" class="fixed right-5 top-20 z-[100] hidden items-center gap-3 rounded-lg border border-white/10 bg-[#1a1a1a] pl-4 pr-3 py-3 shadow-2xl transition-all">
+        <div class="h-2 w-2 rounded-full bg-green-500"></div>
+        <span id="toast-message" class="text-sm font-medium text-neutral-200"></span>
+        <button id="toast-close" class="ml-2 rounded p-1 text-neutral-500 hover:bg-white/10 hover:text-white">✕</button>
+    </div>
+
+    {% endblock %}
+
+    {% block scripts %}
+     <script src="{{ url_for('static', filename='js/music-player.js') }}"></script>
+    {% endblock %}
+
+</body>
+</html>

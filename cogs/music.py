@@ -8,10 +8,8 @@ import wavelink
 from discord import Embed
 from discord.ext import commands, tasks
 from loguru import logger
-from sqlalchemy import create_engine, func
-from sqlalchemy.orm import selectinload, sessionmaker
 
-from database.models import Album, AlbumTrack, PlayHistory, QueueTracks, ServerSettings
+from database.music_repository import MusicRepository
 from settings import configs
 
 
@@ -62,14 +60,14 @@ class Music(commands.Cog):
         self.bot = bot
         # Setup database connection
         database_url = os.getenv("DATABASE_URL")
-        self.engine = create_engine(database_url)
-        self.Session = sessionmaker(bind=self.engine)
+        self.repo = MusicRepository(database_url)
+
         self.idle_checker.start()
         self.add_track_mode_users = {}  # {user_id: (album_name, timeout_task)}
 
     # Only listen to music channel
     async def cog_check(self, ctx):
-        config = self.get_server_config(ctx.guild.id)
+        config = self.repo.get_server_config(ctx.guild.id)
         channel = None
 
         if config.default_channel_id:
@@ -88,23 +86,6 @@ class Music(commands.Cog):
 
         return True
 
-    def get_server_config(self, guild_id: int):
-        """Get server configuration from database"""
-        session = self.Session()
-        try:
-            config = session.query(ServerSettings).filter_by(guild_id=guild_id).first()
-            if not config:
-                # Create default config for new server
-                config = ServerSettings(
-                    guild_id=guild_id, command_prefix="!", default_channel_id=None
-                )
-                session.add(config)
-                session.commit()
-                session.refresh(config)
-            return config
-        finally:
-            session.close()
-
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
         logger.info(f"Lavalink node {payload.node.identifier} is connected and ready!")
@@ -116,8 +97,8 @@ class Music(commands.Cog):
         reason = payload.reason
         if reason.upper() == "STOPPED" or reason.upper() == "REPLACED":
             return
-        next_track = self.pop_next_track(player.guild.id)
-        channel_id = self.get_server_config(player.guild.id).default_channel_id
+        next_track = self.repo.pop_next_track(player.guild.id)
+        channel_id = self.repo.get_server_config(player.guild.id).default_channel_id
         channel = player.guild.get_channel(channel_id)
         if not next_track:
             if channel:
@@ -128,7 +109,7 @@ class Music(commands.Cog):
         await player.play(playable)
 
         # Save play history
-        self.save_play_history(
+        self.repo.save_play_history(
             player.guild.id,
             next_track.requested_by,
             next_track.track_title,
@@ -140,273 +121,6 @@ class Music(commands.Cog):
             embed=track_embed(playable, next_track.requested_by, title="▶️ Now Playing")
         )
 
-    def save_play_history(
-        self, guild_id: int, user_id: int, track_title: str, track_author: str, url: str
-    ):
-        """Save play history to database"""
-        session = self.Session()
-        try:
-            history = PlayHistory(
-                guild_id=guild_id,
-                user_id=user_id,
-                track_title=track_title,
-                track_author=track_author,
-                url=url,
-            )
-            session.add(history)
-            session.commit()
-        except Exception as e:
-            logger.info(f"Error saving play history: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    def remove_track_from_ablumn(self, album_id: int, track_id: int):
-        """Remove track from album in DB"""
-        session = self.Session()
-        try:
-            session.query(AlbumTrack).filter_by(album_id=album_id, id=track_id).delete()
-            session.commit()
-        except Exception as e:
-            logger.info(f"Error removing track from album: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    def get_all_tracks_from_queue(self, guild_id: int):
-        """Fetch all tracks in the queue for a guild, ordered by position."""
-        session = self.Session()
-        try:
-            tracks = (
-                session.query(QueueTracks)
-                .filter_by(guild_id=guild_id)
-                .order_by(QueueTracks.position.asc())
-                .all()
-            )
-            return tracks
-        except Exception as e:
-            logger.info(f"Error fetching queue tracks: {e}")
-            return []
-        finally:
-            session.close()
-
-    def delele_all_tracks_from_queue(self, guild_id: int):
-        """Clear the queue for a guild."""
-        session = self.Session()
-        try:
-            session.query(QueueTracks).filter_by(guild_id=guild_id).delete()
-            session.commit()
-        except Exception as e:
-            logger.info(f"Error clearing queue: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    def _create_ablumn(
-        self,
-        guild_id: int,
-        album_name: str,
-        requested_by: int,
-    ):
-        """Add album track to DB"""
-        session = self.Session()
-        try:
-            album = Album(
-                guild_id=guild_id,
-                album_name=album_name,
-                created_by=requested_by,
-            )
-            session.add(album)
-            session.commit()
-        except Exception as e:
-            logger.info(f"Error saving album track: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    def _remove_album(self, guild_id: int, album_name: str):
-        """Remove album and its tracks from DB"""
-        session = self.Session()
-        try:
-            album = (
-                session.query(Album)
-                .filter_by(guild_id=guild_id, album_name=album_name)
-                .first()
-            )
-            if album:
-                session.delete(album)
-                session.commit()
-        except Exception as e:
-            logger.info(f"Error removing album: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    def get_all_albums(self, guild_id: int):
-        """Fetch all albums with their tracks for a specific guild."""
-        session = self.Session()
-        try:
-            albums = (
-                session.query(Album)
-                .options(selectinload(Album.tracks))  # eagerly load tracks
-                .filter_by(guild_id=guild_id)
-                .all()
-            )
-            return albums  # list of Album objects with tracks loaded
-        except Exception as e:
-            logger.info(f"Error fetching albums: {e}")
-            return []
-        finally:
-            session.close()
-
-    def get_album_tracks(self, guild_id: int, album_name: str):
-        """Fetch all tracks of a specific album for a guild."""
-        session = self.Session()
-        try:
-            album = (
-                session.query(Album)
-                .filter_by(guild_id=guild_id, album_name=album_name)
-                .first()
-            )
-            if not album:
-                return []  # Album not found
-            return album.tracks  # list of AlbumTrack objects
-        except Exception as e:
-            logger.info(f"Error fetching album tracks: {e}")
-            return []
-        finally:
-            session.close()
-
-    def clear_queue(self, guild_id: int):
-        session = self.Session()
-        try:
-            session.query(QueueTracks).filter_by(guild_id=guild_id).delete()
-            session.commit()
-            return True
-        except Exception as e:
-            logger.info(f"Error removing from queue: {e}")
-            session.rollback()
-            return False
-
-    def remove_from_queue(self, guild_id: int, track_position: int):
-        session = self.Session()
-        try:
-            session.query(QueueTracks).filter_by(
-                guild_id=guild_id, position=track_position
-            ).delete()
-            session.commit()
-            return True
-        except Exception as e:
-            logger.info(f"Error removing from queue: {e}")
-            session.rollback()
-            return False
-
-    def save_to_queue(
-        self,
-        guild_id: int,
-        track_title: str,
-        url: str,
-        track_author: str,
-        requested_by: int,
-    ):
-        """Add track to DB queue"""
-        session = self.Session()
-        try:
-            # Determine next position using func.max for robustness
-            max_pos = (
-                session.query(func.max(QueueTracks.position))
-                .filter_by(guild_id=guild_id)
-                .scalar()
-            )
-
-            # Use max_pos or 0 if the queue is empty, then add 1
-            next_pos = (max_pos if max_pos is not None else 0) + 1
-
-            queue_track = QueueTracks(
-                guild_id=guild_id,
-                track_title=track_title,
-                url=url,
-                requested_by=requested_by,
-                track_author=track_author,
-                position=next_pos,
-            )
-            session.add(queue_track)
-            session.commit()
-        except Exception as e:
-            logger.info(f"Error saving to queue: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    def get_next_track(self, guild_id: int):
-        """Fetch the first track in queue (FIFO)"""
-        session = self.Session()
-        try:
-            track = (
-                session.query(QueueTracks)
-                .filter_by(guild_id=guild_id)
-                .order_by(QueueTracks.position.asc())
-                .first()
-            )
-            return track
-        finally:
-            session.close()
-
-    def shuffle_queue(self, guild_id: int):
-        """Shuffle the queue for a guild"""
-        session = self.Session()
-        try:
-            tracks = session.query(QueueTracks).filter_by(guild_id=guild_id).all()
-            import random
-
-            random.shuffle(tracks)
-            for index, track in enumerate(tracks, start=1):
-                track.position = index
-            session.commit()
-        except Exception as e:
-            logger.info(f"Error shuffling queue: {e}")
-            session.rollback()
-        finally:
-            session.close()
-
-    def pop_next_track(self, guild_id: int):
-        """Pop the first track in queue, remove it from DB, and recalc positions."""
-        session = self.Session()
-        try:
-            # Get the first track
-            track = (
-                session.query(QueueTracks)
-                .filter_by(guild_id=guild_id)
-                .order_by(QueueTracks.position.asc())
-                .first()
-            )
-            if not track:
-                return None
-
-            # Remove it
-            session.delete(track)
-            session.commit()  # commit deletion first
-
-            # Recalculate positions for remaining tracks
-            remaining_tracks = (
-                session.query(QueueTracks)
-                .filter_by(guild_id=guild_id)
-                .order_by(QueueTracks.position.asc())
-                .all()
-            )
-
-            for i, t in enumerate(remaining_tracks, start=1):
-                t.position = i
-            session.commit()
-
-            return track
-        except Exception as e:
-            logger.info(f"Error popping next track: {e}")
-            session.rollback()
-            return None
-        finally:
-            session.close()
-
     # Task
     @tasks.loop(seconds=5)
     async def idle_checker(self):
@@ -415,7 +129,7 @@ class Music(commands.Cog):
 
             # Check if bot is connected
             if not vc:
-                self.delele_all_tracks_from_queue(guild.id)
+                self.repo.delele_all_tracks_from_queue(guild.id)
                 continue
 
             # Check if voice channel is empty
@@ -426,13 +140,15 @@ class Music(commands.Cog):
                     logger.info(
                         f"Disconnecting from {guild.name} because bot is alone."
                     )
-                    channel_id = self.get_server_config(guild.id).default_channel_id
+                    channel_id = self.repo.get_server_config(
+                        guild.id
+                    ).default_channel_id
                     channel = guild.get_channel(channel_id)
                     await channel.send(
                         "Leaving voice channel because everyone left :face_holding_back_tears: ."
                     )
                     await vc.disconnect()
-                    self.delele_all_tracks_from_queue(guild.id)
+                    self.repo.delele_all_tracks_from_queue(guild.id)
                     if hasattr(vc, "idle_start"):
                         delattr(vc, "idle_start")
                     continue
@@ -447,11 +163,13 @@ class Music(commands.Cog):
                     logger.info(
                         f"Disconnecting from {guild.name} after {configs.IDLE_TIMEOUT} seconds of idling."
                     )
-                    channel_id = self.get_server_config(guild.id).default_channel_id
+                    channel_id = self.repo.get_server_config(
+                        guild.id
+                    ).default_channel_id
                     channel = guild.get_channel(channel_id)
                     await channel.send("Disconnecting due to inactivity.")
                     await vc.disconnect()
-                    self.delele_all_tracks_from_queue(guild.id)
+                    self.repo.delele_all_tracks_from_queue(guild.id)
                     if hasattr(vc, "idle_start"):
                         delattr(vc, "idle_start")
             else:
@@ -482,21 +200,31 @@ class Music(commands.Cog):
             if not tracks:
                 return await ctx.send("No tracks found!")
             track = tracks[0]
-            self.save_to_queue(
-                ctx.guild.id, track.title, track.uri, track.author, ctx.author.id
+            self.repo.save_to_queue(
+                ctx.guild.id,
+                track.title,
+                track.uri,
+                track.identifier,
+                track.author,
+                ctx.author.id,
             )
             await ctx.send(
                 embed=track_embed(track, ctx.author.id, title="📝 Added to Queue")
             )
 
         if not vc.playing:
-            play_track = self.pop_next_track(ctx.guild.id)
+            play_track = self.repo.pop_next_track(ctx.guild.id)
             if play_track:
                 tracks = await wavelink.Playable.search(play_track.url)
                 track = tracks[0]
                 await vc.play(track)
-                self.save_play_history(
-                    ctx.guild.id, ctx.author.id, track.title, track.author, track.uri
+                self.repo.save_play_history(
+                    ctx.guild.id,
+                    ctx.author.id,
+                    track.title,
+                    track.identifier,
+                    track.author,
+                    track.uri,
                 )
                 await ctx.send(
                     embed=track_embed(
@@ -527,36 +255,17 @@ class Music(commands.Cog):
                 logger.exception("Error connecting to voice channel")
                 return await ctx.send("❌ Failed to connect to the voice channel.")
 
-        session = self.Session()
-        try:
-            album = (
-                session.query(Album)
-                .options(selectinload(Album.tracks))  # eager load tracks
-                .filter_by(guild_id=ctx.guild.id, album_name=album_name)
-                .first()
-            )
-            if not album:
-                return await ctx.send(f"❌ Album '{album_name}' does not exist.")
-            # Extract plain Python list of tracks (avoid using ORM objects after session close)
-            album_tracks = [
-                {
-                    "track_title": t.track_title,
-                    "url": t.url,
-                    "track_author": t.track_author,
-                }
-                for t in sorted(
-                    album.tracks, key=lambda x: getattr(x, "track_number", x.id)
-                )
-            ]
-        finally:
-            session.close()
-
         await ctx.send("Current queue will be cleared. Adding album tracks...")
-        self.delele_all_tracks_from_queue(ctx.guild.id)
+        self.repo.delele_all_tracks_from_queue(ctx.guild.id)
+        album_tracks = self.repo.add_album_to_queue(ctx.guild.id, album_name)
+        if not album_tracks:
+            return await ctx.send(
+                f"❌ Album '{album_name}' not found or has no tracks."
+            )
 
         # Add tracks to queue (save_to_queue opens/closes its own session)
         for t in album_tracks:
-            self.save_to_queue(
+            self.repo.save_to_queue(
                 ctx.guild.id,
                 t["track_title"],
                 t["url"],
@@ -567,12 +276,12 @@ class Music(commands.Cog):
         await ctx.send(f"✅ All tracks from album '{album_name}' added to the queue.")
 
         if not vc.playing:
-            play_track = self.pop_next_track(ctx.guild.id)
+            play_track = self.repo.pop_next_track(ctx.guild.id)
             if play_track:
                 tracks = await wavelink.Playable.search(play_track.url)
                 track = tracks[0]
                 await vc.play(track)
-                self.save_play_history(
+                self.repo.save_play_history(
                     ctx.guild.id, ctx.author.id, track.title, track.author, track.uri
                 )
                 await ctx.send(
@@ -609,12 +318,12 @@ class Music(commands.Cog):
         await ctx.send(f"⏭️ Skipped: **{skipped.title}**")
 
         # Play next track from DB
-        next_track = self.pop_next_track(ctx.guild.id)
+        next_track = self.repo.pop_next_track(ctx.guild.id)
         if next_track:
             tracks = await wavelink.Playable.search(next_track.url)
             track = tracks[0]
             await vc.play(track)
-            self.save_play_history(
+            self.repo.save_play_history(
                 ctx.guild.id,
                 next_track.requested_by,
                 track.title,
@@ -647,7 +356,7 @@ class Music(commands.Cog):
     @commands.command()
     async def remove(self, ctx, track_position: int):
         """Remove a specific track from the queue by its ID."""
-        queue_track = self.remove_from_queue(ctx.guild.id, track_position)
+        queue_track = self.repo.remove_from_queue(ctx.guild.id, track_position)
         if queue_track:
             await ctx.send(f"Removed track ID {track_position} from the queue.")
         else:
@@ -655,7 +364,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def clear(self, ctx):
-        cleared = self.clear_queue(ctx.guild.id)
+        cleared = self.repo.clear_queue(ctx.guild.id)
         if cleared:
             await ctx.send("Cleared the entire queue.")
         else:
@@ -663,7 +372,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def queue(self, ctx):
-        queue_tracks = self.get_all_tracks_from_queue(ctx.guild.id)
+        queue_tracks = self.repo.get_all_tracks_from_queue(ctx.guild.id)
         if not queue_tracks:
             return await ctx.send("📭 **The queue is currently empty!**")
 
@@ -692,10 +401,12 @@ class Music(commands.Cog):
     @commands.command()
     async def create_album(self, ctx, *, album_name: str):
         """Create an album by adding tracks to the database."""
-        self._create_ablumn(
+        print(album_name)
+        self.repo.create_album(
             guild_id=ctx.guild.id,
             album_name=album_name,
             requested_by=ctx.author.id,
+            album_img_url=None,
         )
         await ctx.send(
             f"📀 Album '{album_name}' created successfully! Please add tracks."
@@ -704,13 +415,13 @@ class Music(commands.Cog):
     @commands.command()
     async def remove_album(self, ctx, *, album_name: str):
         """Remove an album and its tracks from the database."""
-        self._remove_album(ctx.guild.id, album_name)
+        self.repo.remove_album(ctx.guild.id, album_name)
         await ctx.send(f"🗑️ Album '{album_name}' and its tracks have been removed.")
 
     @commands.command()
     async def albums(self, ctx):
         """List all albums for the server."""
-        albums = self.get_all_albums(ctx.guild.id)
+        albums = self.repo.get_all_albums(ctx.guild.id)
         if not albums:
             return await ctx.send("📭 No albums found for this server.")
 
@@ -732,7 +443,7 @@ class Music(commands.Cog):
     @commands.command()
     async def show_album(self, ctx, *, album_name: str):
         """List all tracks in a specific album."""
-        tracks = self.get_album_tracks(ctx.guild.id, album_name)
+        tracks = self.repo.get_album_tracks(ctx.guild.id, album_name)
         if not tracks:
             return await ctx.send(f"📭 No tracks found for album '{album_name}'.")
 
@@ -776,37 +487,31 @@ class Music(commands.Cog):
     @commands.command()
     async def start_add(self, ctx, *, album_name: str):
         """Start add-track mode for a specific album."""
-        session = self.Session()
-        try:
-            album = (
-                session.query(Album)
-                .filter_by(guild_id=ctx.guild.id, album_name=album_name)
-                .first()
-            )
-            if not album:
-                return await ctx.send(f"❌ Album '{album_name}' does not exist.")
+        # Use repository to get album
+        album = self.repo.get_album_by_name(ctx.guild.id, album_name)
 
-            user_id = ctx.author.id
+        if not album:
+            return await ctx.send(f"❌ Album '{album_name}' does not exist.")
 
-            # Cancel previous timeout if exists
-            if user_id in self.add_track_mode_users:
-                self.add_track_mode_users[user_id]["timeout_task"].cancel()
+        user_id = ctx.author.id
 
-            timeout_task = self.bot.loop.create_task(
-                self._remove_add_mode_after(user_id, 30)
-            )
-            self.add_track_mode_users[user_id] = {
-                "album_id": album.id,
-                "timeout_task": timeout_task,
-                "channel_id": ctx.channel.id,
-            }
+        # Cancel previous timeout if exists
+        if user_id in self.add_track_mode_users:
+            self.add_track_mode_users[user_id]["timeout_task"].cancel()
 
-            await ctx.send(
-                f"✅ You are now in **add-track mode** for album '{album_name}'. "
-                f"All tracks you add will go into this album until you end the mode or 30s pass without activity."
-            )
-        finally:
-            session.close()
+        timeout_task = self.bot.loop.create_task(
+            self._remove_add_mode_after(user_id, 30)
+        )
+        self.add_track_mode_users[user_id] = {
+            "album_id": album.id,
+            "timeout_task": timeout_task,
+            "channel_id": ctx.channel.id,
+        }
+
+        await ctx.send(
+            f"✅ You are now in **add-track mode** for album '{album_name}'. "
+            f"All tracks you add will go into this album until you end the mode or 30s pass without activity."
+        )
 
     @commands.command()
     async def end(self, ctx):
@@ -826,7 +531,7 @@ class Music(commands.Cog):
 
         if user_id not in self.add_track_mode_users:
             return await ctx.send(
-                "❌ You are not in add-track mode. Use `!start_add_album_tracks <album>` first."
+                "❌ You are not in add-track mode. Use `!start_add <album>` first."
             )
 
         # Reset timeout
@@ -838,61 +543,60 @@ class Music(commands.Cog):
 
         album_id = self.add_track_mode_users[user_id]["album_id"]
 
-        session = self.Session()
-        try:
-            album = session.query(Album).filter_by(id=album_id).first()
-            if not album:
-                return await ctx.send("❌ The album no longer exists.")
-            max_track_number = (
-                session.query(func.max(AlbumTrack.track_number))
-                .filter_by(album_id=album.id)
-                .scalar()
-            )
-            next_track_number = (
-                max_track_number if max_track_number is not None else 0
-            ) + 1
-            # Search track
-            search_tracks = await wavelink.Playable.search(track_title)
-            choose_track = search_tracks[0] if search_tracks else None
-            if not choose_track:
-                return await ctx.send(f"❌ No track found for '{track_title}'.")
+        # Get album using repository
+        album = self.repo.get_album_by_id(album_id)
+        if not album:
+            return await ctx.send("❌ The album no longer exists.")
 
-            album_track = AlbumTrack(
-                album_id=album.id,
-                track_title=choose_track.title,
-                track_number=next_track_number,
-                url=choose_track.uri,
-                track_author=choose_track.author,
-                requested_by=ctx.author.id,
+        # Get next track number
+        max_track_number = self.repo.get_max_track_number(album.id)
+        next_track_number = max_track_number + 1
+
+        # Search track
+        search_tracks = await wavelink.Playable.search(track_title)
+        choose_track = search_tracks[0] if search_tracks else None
+        if not choose_track:
+            return await ctx.send(f"❌ No track found for '{track_title}'.")
+
+        # Add track using repository
+        added_track = self.repo.add_track_to_album_with_number(
+            album_id=album.id,
+            track_title=choose_track.title,
+            url=choose_track.uri,
+            track_author=choose_track.author,
+            requested_by=ctx.author.id,
+            identifier=choose_track.identifier,
+            track_number=next_track_number,
+        )
+
+        if not added_track:
+            return await ctx.send("❌ Failed to add track to album.")
+
+        await ctx.send(
+            f"✅ Track '{choose_track.title}' added to album '{album.album_name}'."
+        )
+
+        # Show updated tracks
+        tracks = self.repo.get_album_tracks(ctx.guild.id, album.album_name)
+        track_list = []
+        for track in tracks:
+            # Truncate title if too long
+            title = (
+                (track.track_title[:50] + "...")
+                if len(track.track_title) > 50
+                else track.track_title
             )
-            session.add(album_track)
-            session.commit()
-            await ctx.send(
-                f"✅ Track '{choose_track.title}' added to album '{album.album_name}'."
+            track_list.append(
+                f"**{track.track_number}.** [{title}]({track.url}) - {track.track_author} (by <@{track.requested_by}>)"
             )
 
-            # Show update tracks
-            tracks = self.get_album_tracks(ctx.guild.id, album.album_name)
-            track_list = []
-            for i, track in enumerate(tracks, 1):
-                # Truncate title if too long
-                title = (
-                    (track.track_title[:50] + "...")
-                    if len(track.track_title) > 50
-                    else track.track_title
-                )
-                track_list.append(
-                    f"**{track.track_number}.** [{title}]({track.url}) - {track.track_author} (by <@{track.requested_by}>)"
-                )
-            track_str = "\n".join(track_list)
-            embed = Embed(
-                title=f"🎵 Updated Tracks in Album: {album.album_name} ({len(tracks)} Tracks)",
-                description=track_str,
-                color=0x2ECC71,
-            )
-            await ctx.send(embed=embed)
-        finally:
-            session.close()
+        track_str = "\n".join(track_list)
+        embed = Embed(
+            title=f"🎵 Updated Tracks in Album: {album.album_name} ({len(tracks)} Tracks)",
+            description=track_str,
+            color=0x2ECC71,
+        )
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def remove_from_album(self, ctx, *, args: str):
@@ -905,35 +609,19 @@ class Music(commands.Cog):
 
         album_name, track_number = parts[0], int(parts[1])
 
-        session = self.Session()
-        try:
-            # Find album first
-            album = (
-                session.query(Album)
-                .filter_by(album_name=album_name, guild_id=ctx.guild.id)
-                .first()
-            )
-            if not album:
-                return await ctx.send(f"❌ Album with ID {album_name} does not exist.")
+        # Use repository to remove track
+        success, track_title = self.repo.remove_track_from_album_by_number(
+            ctx.guild.id, album_name, track_number
+        )
 
-            # Find track within that album
-            track = (
-                session.query(AlbumTrack)
-                .filter_by(track_number=track_number, album_id=album.id)
-                .first()
-            )
-            if not track:
+        if not success:
+            if track_title is None:
                 return await ctx.send(
-                    f"❌ Track ID {track_number} not found in this album."
+                    f"❌ Album '{album_name}' or track #{track_number} not found."
                 )
+            return await ctx.send(f"❌ Failed to remove track from album.")
 
-            session.delete(track)
-            session.commit()
-            await ctx.send(
-                f"✅ Track '{track.track_title}' removed from album '{album.album_name}'."
-            )
-        finally:
-            session.close()
+        await ctx.send(f"✅ Track '{track_title}' removed from album '{album_name}'.")
 
     @commands.command()
     async def now(self, ctx):
@@ -945,7 +633,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def shuffle(self, ctx):
-        self.shuffle_queue(ctx.guild.id)
+        self.repo.shuffle_queue(ctx.guild.id)
         await ctx.send("🔀 Queue shuffled!")
 
 

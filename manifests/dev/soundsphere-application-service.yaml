@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: soundsphere-application
+  namespace: dev
+spec:
+  selector:
+    app: soundsphere-application
+  type: NodePort
+  ports:
+    - name: flask
+      protocol: TCP
+      port: 8000        # external port
+      targetPort: 8000  # container Flask port
+      nodePort: 30079    # NodePort for external access

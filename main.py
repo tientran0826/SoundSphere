@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 
@@ -208,12 +209,39 @@ async def before_change_status():
 
 
 # ----------------------
+# Run music api
+# ----------------------
+async def run_api():
+    """Run FastAPI server"""
+    import uvicorn
+
+    from api.dependencies import set_bot_instance
+    from api.music_api import app
+
+    # Set bot instance for API
+    set_bot_instance(bot)
+    logger.info("Bot instance set for API")
+
+    config = uvicorn.Config(app, host="0.0.0.0", port=5000, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+# ----------------------
 # Run bot
 # ----------------------
-def run_bot():
+async def run_bot():
+    """Run Discord bot"""
     token = os.getenv("DISCORD_API_KEY")
-    bot.run(token)
+    async with bot:
+        await bot.start(token)
+
+
+async def main():
+
+    # Run FastAPI and Discord bot concurrently
+    await asyncio.gather(run_api(), run_bot())
 
 
 if __name__ == "__main__":
-    run_bot()
+    asyncio.run(main())

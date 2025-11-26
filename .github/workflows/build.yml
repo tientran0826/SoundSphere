@@ -20,25 +20,51 @@ jobs:
         run: |
           DOCKER_REPO="${{ secrets.DOCKERHUB_USERNAME }}"
           if [ "${{ github.ref_name }}" == "production" ]; then
-            TAG="${DOCKER_REPO}/soundsphere-bot:latest"
+            BOT_TAG="${DOCKER_REPO}/soundsphere-bot:latest"
+            APPLICATION_TAG="${DOCKER_REPO}/soundsphere-application:latest"
           else
-            TAG="${DOCKER_REPO}/soundsphere-bot-dev:latest"
+            BOT_TAG="${DOCKER_REPO}/soundsphere-bot-dev:latest"
+            APPLICATION_TAG="${DOCKER_REPO}/soundsphere-application-dev:latest"
           fi
-          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "BOT_TAG=$BOT_TAG" >> $GITHUB_ENV
+          echo "APPLICATION_TAG=$APPLICATION_TAG" >> $GITHUB_ENV
 
-      - name: Build & Push
+      - name: Build & Push Bot Image
         uses: docker/build-push-action@v4
         with:
           context: .
+          dockerfile: Dockerfile
           push: true
-          tags: ${{ env.TAG }}
+          tags: ${{ env.BOT_TAG }}
 
-      - name: Trigger Argo CD sync
+      - name: Build & Push Application Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./application
+          dockerfile: Dockerfile
+          push: true
+          tags: ${{ env.APPLICATION_TAG }}
+
+      - name: Trigger Argo CD sync BOT
         run: |
           if [ "${{ github.ref_name }}" == "production" ]; then
             APP_NAME="soundsphere"
           else
             APP_NAME="soundsphere-dev"
+          fi
+
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.ARGOCD_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"prune":true,"force":true,"replace":true}' \
+            https://argocd.castl.io.vn/api/v1/applications/$APP_NAME/sync
+
+      - name: Trigger Argo CD sync APPLICATION
+        run: |
+          if [ "${{ github.ref_name }}" == "production" ]; then
+            APP_NAME="soundsphere-application"
+          else
+            APP_NAME="soundsphere-application-dev"
           fi
 
           curl -X POST \
