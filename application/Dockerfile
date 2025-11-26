@@ -6,14 +6,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Poetry
+RUN pip install --no-cache-dir poetry
+
 WORKDIR /app
 
-COPY requirements.txt .
+# Copy Poetry files
+COPY pyproject.toml poetry.lock* /app/
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies only (do not install the project itself)
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-root
 
+# Copy project files
 COPY . /app
 
 # Run the bot
-CMD ["python", "main.py"]
+CMD ["poetry", "run", "python", "main.py"]
