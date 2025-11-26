@@ -1,3 +1,5 @@
+import urllib.parse
+
 import requests
 from configs import configs
 from flask import Flask, flash, g, redirect, render_template, request, session, url_for
@@ -26,7 +28,7 @@ def login():
     discord_auth_url = (
         f"https://discord.com/oauth2/authorize"
         f"?client_id={configs.DISCORD_CLIENT_ID}"
-        f"&redirect_uri={configs.DISCORD_REDIRECT_URI}"
+        f"&redirect_uri={urllib.parse.quote(configs.DISCORD_REDIRECT_URI)}"
         f"&response_type=code"
         f"&scope={configs.OAUTH_SCOPE}"
     )
@@ -54,7 +56,11 @@ def callback():
         app.logger.error(f"Failed to get token: {token_response.text}")
         return "Failed to get token.", 400
 
-    token_info = token_response.json()
+    try:
+        token_info = token_response.json()
+    except ValueError:
+        app.logger.error(f"Token response is not JSON: {token_response.text}")
+        return "Failed to parse token response.", 400
     access_token = token_info.get("access_token")
     if not access_token:
         return "Token is not exist.", 400
