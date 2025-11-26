@@ -1,27 +1,9 @@
-# app.py
-import os
-
 import requests
-from dotenv import load_dotenv
+from configs import configs
 from flask import Flask, flash, g, redirect, render_template, request, session, url_for
 
-load_dotenv()
-
-# --- Khởi tạo Ứng dụng Flask ---
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY")
-
-# --- Cấu hình ---
-CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
-CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL")
-OAUTH_SCOPE = "identify guilds"
-DISCORD_API_BASE_URL = "https://discord.com/api/v10"
-LAVALINK_HOST = os.getenv("LAVALINK_HOST")
-LAVALINK_PORT = os.getenv("LAVALINK_PORT")
-LAVALINK_PASSWORD = os.getenv("LAVALINK_PASSWORD")
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+app.secret_key = configs.FLASK_SECRET_KEY
 
 
 @app.before_request
@@ -42,11 +24,11 @@ def index():
 @app.route("/login")
 def login():
     discord_auth_url = (
-        f"{DISCORD_API_BASE_URL}/oauth2/authorize"
-        f"?client_id={CLIENT_ID}"
-        f"&redirect_uri={REDIRECT_URI}"
+        f"{configs.FASTAPI_BASE_URL}/oauth2/authorize"
+        f"?client_id={configs.DISCORD_CLIENT_ID}"
+        f"&redirect_uri={configs.DISCORD_REDIRECT_URI}"
         f"&response_type=code"
-        f"&scope={OAUTH_SCOPE}"
+        f"&scope={configs.OAUTH_SCOPE}"
     )
     return redirect(discord_auth_url)
 
@@ -57,14 +39,14 @@ def callback():
     if not code:
         return redirect(url_for("index"))
 
-    token_url = f"{DISCORD_API_BASE_URL}/oauth2/token"
+    token_url = f"{configs.FASTAPI_BASE_URL}/oauth2/token"
     data = {
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
+        "client_id": configs.DISCORD_CLIENT_ID,
+        "client_secret": configs.DISCORD_CLIENT_SECRET,
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": REDIRECT_URI,
-        "scope": OAUTH_SCOPE,
+        "redirect_uri": configs.DISCORD_REDIRECT_URI,
+        "scope": configs.OAUTH_SCOPE,
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     token_response = requests.post(token_url, data=data, headers=headers)
@@ -76,7 +58,7 @@ def callback():
     access_token = token_info.get("access_token")
     if not access_token:
         return "Token is not exist.", 400
-    user_url = f"{DISCORD_API_BASE_URL}/users/@me"
+    user_url = f"{configs.FASTAPI_BASE_URL}/users/@me"
     auth_headers = {"Authorization": f"Bearer {access_token}"}
     user_response = requests.get(user_url, headers=auth_headers)
     if user_response.status_code != 200:
@@ -100,7 +82,7 @@ def logout():
 
 
 def get_user_guilds(access_token):
-    user_guilds_url = f"{DISCORD_API_BASE_URL}/users/@me/guilds"
+    user_guilds_url = f"{configs.FASTAPI_BASE_URL}/users/@me/guilds"
     auth_headers = {"Authorization": f"Bearer {access_token}"}
     try:
         response = requests.get(user_guilds_url, headers=auth_headers)
@@ -115,15 +97,13 @@ def get_user_guilds(access_token):
 def load_user_data():
     g.user_id = session.get("discord_user_id")
     g.username = session.get("discord_username")
-    if g.user_id:
-        print(f"DEBUG: User ID loaded into g: {g.user_id}")
-    else:
-        print("DEBUG: User not logged in (g.user_id is None)")
 
 
 def check_bot_connected(guild_id):
     try:
-        status_res = requests.get(f"{FASTAPI_BASE_URL}/api/bot/{guild_id}/status")
+        status_res = requests.get(
+            f"{configs.FASTAPI_BASE_URL}/api/bot/{guild_id}/status"
+        )
         status_res.raise_for_status()
         guild_data = status_res.json()["status"]
         return guild_data.get("connected", False)
@@ -154,13 +134,10 @@ def search_track(query):
     if not query:
         return redirect(url_for("dashboard"))
 
-    lavalink_base_url = f"http://{LAVALINK_HOST}:{LAVALINK_PORT}"
-    lavalink_password = LAVALINK_PASSWORD
     identifier = f"ytsearch:{query}"
-    search_url = f"{lavalink_base_url}/v4/loadtracks"
+    search_url = f"{configs.LAVALINK_URI}/v4/loadtracks"
     params = {"identifier": identifier}
-
-    headers = {"Authorization": lavalink_password}
+    headers = {"Authorization": configs.LAVALINK_PASSWORD}
 
     search_results = []
 
@@ -230,7 +207,7 @@ def search_track(query):
         guild_id=guild_id,
         guild_name=guild_name,
         user_id=user_id,
-        FASTAPI_BASE_URL=FASTAPI_BASE_URL,  # Add this line
+        FASTAPI_BASE_URL=configs.FASTAPI_BASE_URL,  # Add this line
         target_album=target_album,
     )
 
@@ -240,7 +217,7 @@ def dashboard():
     if not g.user_id:
         return redirect(url_for("index"))
     try:
-        status_res = requests.get(f"{FASTAPI_BASE_URL}/api/bot/status")
+        status_res = requests.get(f"{configs.FASTAPI_BASE_URL}/api/bot/status")
         status_res.raise_for_status()
         bot_status_data = status_res.json()["status"]
         bot_guilds = {
@@ -270,12 +247,16 @@ def select_guild(guild_id):
         return redirect(url_for("index"))
     try:
         guild_status = requests.get(
-            f"{FASTAPI_BASE_URL}/api/bot/{guild_id}/status",
+            f"{configs.FASTAPI_BASE_URL}/api/bot/{guild_id}/status",
         )
         guild_status.raise_for_status()
         guild_data = guild_status.json()["status"]
     except requests.exceptions.RequestException:
-        guild_data = {"guild_id": guild_id, "guild_name": "Lỗi API", "connected": False}
+        guild_data = {
+            "guild_id": guild_id,
+            "guild_name": "Error API",
+            "connected": False,
+        }
 
     session["current_guild_id"] = guild_id
     session["current_guild_name"] = guild_data.get(
@@ -299,7 +280,7 @@ def control_bot_action(action, guild_id):
 
     try:
         response = requests.post(
-            f"{FASTAPI_BASE_URL}/api/bot/{guild_id}/control",
+            f"{configs.FASTAPI_BASE_URL}/api/bot/{guild_id}/control",
             json={"action": action, "user_id": int(user_id)},
         )
         response.raise_for_status()
@@ -322,7 +303,7 @@ def connect_bot(guild_id):
     user_id = session.get("discord_user_id")
     try:
         connect_res = requests.post(
-            f"{FASTAPI_BASE_URL}/api/bot/{guild_id}/connect/{user_id}",
+            f"{configs.FASTAPI_BASE_URL}/api/bot/{guild_id}/connect/{user_id}",
         )
         connect_res.raise_for_status()
     except requests.exceptions.RequestException as e:
@@ -338,7 +319,7 @@ def album_page(guild_id, album_name):
     if not user_id:
         return redirect(url_for("index"))
 
-    url = f"{FASTAPI_BASE_URL}/api/albums/{guild_id}/{album_name}"
+    url = f"{configs.FASTAPI_BASE_URL}/api/albums/{guild_id}/{album_name}"
     resp = requests.get(url)
 
     if resp.status_code == 404:
@@ -356,7 +337,7 @@ def album_page(guild_id, album_name):
     return render_template(
         "album.html",
         album=album_data,
-        FASTAPI_BASE_URL=FASTAPI_BASE_URL,
+        FASTAPI_BASE_URL=configs.FASTAPI_BASE_URL,
         guild_id=guild_id,
         user_id=user_id,
         guild_name=current_guild_name,
@@ -382,7 +363,7 @@ def home():
     for genre_name, region_code in trending_regions.items():
         url = "https://www.googleapis.com/youtube/v3/videos"
         params = {
-            "key": YOUTUBE_API_KEY,
+            "key": configs.YOUTUBE_API_KEY,
             "part": "snippet,statistics",
             "chart": "mostPopular",
             "videoCategoryId": "10",
@@ -415,7 +396,7 @@ def home():
         guild_id=current_guild_id,
         user_id=user_id,
         guild_name=current_guild_name,
-        FASTAPI_BASE_URL=FASTAPI_BASE_URL,
+        FASTAPI_BASE_URL=configs.FASTAPI_BASE_URL,
         trending_data=trending_data,
     )
 
