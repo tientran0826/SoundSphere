@@ -26,7 +26,8 @@ jobs:
             BOT_TAG="${DOCKER_REPO}/soundsphere-bot-dev:latest"
             APPLICATION_TAG="${DOCKER_REPO}/soundsphere-application-dev:latest"
           fi
-          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "BOT_TAG=$BOT_TAG" >> $GITHUB_ENV
+          echo "APPLICATION_TAG=$APPLICATION_TAG" >> $GITHUB_ENV
 
       - name: Build & Push Bot Image
         uses: docker/build-push-action@v4
