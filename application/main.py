@@ -58,7 +58,7 @@ def callback():
     access_token = token_info.get("access_token")
     if not access_token:
         return "Token is not exist.", 400
-    user_url = f"{configs.FASTAPI_BASE_URL}/users/@me"
+    user_url = f"https://discord.com/api/users/@me"
     auth_headers = {"Authorization": f"Bearer {access_token}"}
     user_response = requests.get(user_url, headers=auth_headers)
     if user_response.status_code != 200:
@@ -82,7 +82,7 @@ def logout():
 
 
 def get_user_guilds(access_token):
-    user_guilds_url = f"{configs.FASTAPI_BASE_URL}/users/@me/guilds"
+    user_guilds_url = f"https://discord.com/api/users/@me/guilds"
     auth_headers = {"Authorization": f"Bearer {access_token}"}
     try:
         response = requests.get(user_guilds_url, headers=auth_headers)
