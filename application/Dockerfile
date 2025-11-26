@@ -7,15 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-# Copy requirements.txt from application folder
-COPY application/requirements.txt .
+COPY . /app
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application code
-COPY application/ /app
 
 # Run the bot
 CMD ["python", "main.py"]
